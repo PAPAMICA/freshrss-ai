@@ -1026,7 +1026,7 @@
 			var bodyDiv = fluxEl.querySelector('.aid-nl-stream-body');
 			var iframe = document.createElement('iframe');
 			iframe.className = 'aid-nl-stream-iframe';
-			// allow-scripts needed for email CSS/fonts; allow-popups for links
+			// allow-scripts: needed for email CSS/fonts to apply; allow-popups for links
 			iframe.setAttribute('sandbox', 'allow-scripts allow-popups');
 			bodyDiv.appendChild(iframe);
 
@@ -1042,10 +1042,8 @@
 				? data.html.replace('</body>', heightScript + '</body>')
 				: data.html + heightScript;
 
-			// Use blob URL so the browser treats it as a real HTML page (applies all CSS)
-			var blob = new Blob([enrichedHtml], { type: 'text/html; charset=utf-8' });
-			var blobUrl = URL.createObjectURL(blob);
-			iframe.src = blobUrl;
+			// srcdoc avoids CSP blob: restrictions while rendering the full HTML with CSS
+			iframe.srcdoc = enrichedHtml;
 
 			// Listen for height messages from the iframe
 			function onHeightMsg(e) {
@@ -1055,15 +1053,12 @@
 			}
 			window.addEventListener('message', onHeightMsg);
 
-			iframe.addEventListener('load', function() {
-				URL.revokeObjectURL(blobUrl);
-				// Fallback height after load in case postMessage is delayed
-				setTimeout(function() {
-					if (parseInt(iframe.style.height, 10) < 200) {
-						iframe.style.height = '600px';
-					}
-				}, 2000);
-			});
+			// Fallback height if postMessage doesn't fire within 2s
+			setTimeout(function() {
+				if (parseInt(iframe.style.height, 10) < 200) {
+					iframe.style.height = '600px';
+				}
+			}, 2000);
 
 				// Close button — also clean up the height message listener
 				fluxEl.querySelector('.aid-nl-stream-close').addEventListener('click', function(e) {
@@ -1101,10 +1096,7 @@
 			document.body.appendChild(overlay);
 
 			var frame = overlay.querySelector('iframe');
-			var overlayBlob = new Blob([data.html], { type: 'text/html; charset=utf-8' });
-			var overlayUrl = URL.createObjectURL(overlayBlob);
-			frame.src = overlayUrl;
-			frame.addEventListener('load', function() { URL.revokeObjectURL(overlayUrl); });
+			frame.srcdoc = data.html;
 
 				overlay.querySelector('.aid-nl-close').addEventListener('click', function() {
 					overlay.remove();
