@@ -89,46 +89,43 @@
 		modalEl.setAttribute('role', 'dialog');
 		modalEl.setAttribute('aria-modal', 'true');
 		modalEl.setAttribute('aria-labelledby', 'aid-title');
-		modalEl.innerHTML = `
-<div class="aid-backdrop"></div>
-<div class="aid-panel">
-  <div class="aid-panel-header">
-    <div class="aid-header-left">
-      <span class="aid-header-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.65-4.56A2.5 2.5 0 0 1 2 12a2.5 2.5 0 0 1 2.39-2.48 2.5 2.5 0 0 1 1.65-4.56A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.65-4.56A2.5 2.5 0 0 0 22 12a2.5 2.5 0 0 0-2.39-2.48 2.5 2.5 0 0 0-1.65-4.56A2.5 2.5 0 0 0 14.5 2Z"/></svg></span>
-      <div>
-        <h2 id="aid-title">Résumé IA</h2>
-        <span class="aid-header-meta" id="aid-meta"></span>
-      </div>
-    </div>
-    <div class="aid-header-actions">
-      <button class="aid-btn aid-btn-ghost" id="aid-email-btn" title="Envoyer par email"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg> <span>Email</span></button>
-      <button class="aid-btn aid-btn-primary" id="aid-mark-all-btn" title="Tout marquer comme lu" style="display:none"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path d="M20 6 9 17l-5-5"/></svg> <span>Tout marquer lu</span></button>
-      <button class="aid-btn aid-btn-ghost aid-close-btn" id="aid-close" title="Fermer (Échap)">&#x2715;</button>
-    </div>
-  </div>
-  <div class="aid-panel-body">
-    <div class="aid-loading" id="aid-loading">
-      <div class="aid-spinner"></div>
-      <p id="aid-loading-text">Récupération des articles…</p>
-    </div>
-    <div class="aid-content" id="aid-content" style="display:none">
-      <div class="aid-summary" id="aid-summary"></div>
-    </div>
-    <div class="aid-error" id="aid-error" style="display:none">
-      <span class="aid-error-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
-      <div>
-        <strong>Une erreur est survenue</strong>
-        <p id="aid-error-msg"></p>
-      </div>
-    </div>
-  </div>
-  <div class="aid-panel-footer" id="aid-footer" style="display:none">
-    <div class="aid-footer-left">
-      <span class="aid-footer-info" id="aid-footer-info"></span>
-    </div>
-    <div class="aid-articles-list" id="aid-articles-list"></div>
-  </div>
-</div>`;
+		// No inline style="" here — CSP blocks them. Use aid-hidden class instead.
+		modalEl.innerHTML = [
+			'<div class="aid-backdrop"></div>',
+			'<div class="aid-panel">',
+			'  <div class="aid-panel-header">',
+			'    <div class="aid-header-left">',
+			'      <span class="aid-header-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.65-4.56A2.5 2.5 0 0 1 2 12a2.5 2.5 0 0 1 2.39-2.48 2.5 2.5 0 0 1 1.65-4.56A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.65-4.56A2.5 2.5 0 0 0 22 12a2.5 2.5 0 0 0-2.39-2.48 2.5 2.5 0 0 0-1.65-4.56A2.5 2.5 0 0 0 14.5 2Z"/></svg></span>',
+			'      <div>',
+			'        <h2 id="aid-title">R\u00e9sum\u00e9 IA</h2>',
+			'        <span class="aid-header-meta" id="aid-meta"></span>',
+			'      </div>',
+			'    </div>',
+			'    <div class="aid-header-actions">',
+			'      <button class="aid-btn aid-btn-ghost" id="aid-email-btn" title="Envoyer par email"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg> <span>Email</span></button>',
+			'      <button class="aid-btn aid-btn-primary aid-hidden" id="aid-mark-all-btn" title="Tout marquer comme lu"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path d="M20 6 9 17l-5-5"/></svg> <span>Tout marquer lu</span></button>',
+			'      <button class="aid-btn aid-btn-ghost aid-close-btn" id="aid-close" title="Fermer (\u00c9chap)">&#x2715;</button>',
+			'    </div>',
+			'  </div>',
+			'  <div class="aid-panel-body">',
+			'    <div class="aid-loading" id="aid-loading">',
+			'      <div class="aid-spinner"></div>',
+			'      <p id="aid-loading-text">R\u00e9cup\u00e9ration des articles\u2026</p>',
+			'    </div>',
+			'    <div class="aid-content aid-hidden" id="aid-content">',
+			'      <div class="aid-summary" id="aid-summary"></div>',
+			'    </div>',
+			'    <div class="aid-error aid-hidden" id="aid-error">',
+			'      <span class="aid-error-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>',
+			'      <div><strong>Une erreur est survenue</strong><p id="aid-error-msg"></p></div>',
+			'    </div>',
+			'  </div>',
+			'  <div class="aid-panel-footer aid-hidden" id="aid-footer">',
+			'    <div class="aid-footer-left"><span class="aid-footer-info" id="aid-footer-info"></span></div>',
+			'    <div class="aid-articles-list" id="aid-articles-list"></div>',
+			'  </div>',
+			'</div>',
+		].join('\n');
 
 		document.body.appendChild(modalEl);
 
@@ -148,8 +145,8 @@
 		document.body.classList.add('aid-modal-open');
 		showSection('loading');
 		document.getElementById('aid-loading-text').textContent = 'Récupération des articles…';
-		document.getElementById('aid-footer').style.display = 'none';
-		document.getElementById('aid-mark-all-btn').style.display = 'none';
+		document.getElementById('aid-footer').classList.add('aid-hidden');
+		document.getElementById('aid-mark-all-btn').classList.add('aid-hidden');
 		document.getElementById('aid-meta').textContent = '';
 		document.getElementById('aid-articles-list').innerHTML = '';
 		document.getElementById('aid-summary').innerHTML = '';
@@ -164,7 +161,10 @@
 	function showSection(section) {
 		['loading', 'content', 'error'].forEach(function(s) {
 			var el = document.getElementById('aid-' + s);
-			if (el) el.style.display = s === section ? '' : 'none';
+			if (el) {
+				if (s === section) el.classList.remove('aid-hidden');
+				else el.classList.add('aid-hidden');
+			}
 		});
 	}
 
@@ -327,14 +327,14 @@
 					showSection('content');
 				});
 
-				renderArticleList(data.articles || []);
+			renderArticleList(data.articles || []);
 
-				document.getElementById('aid-footer').style.display = '';
-				updateFooterStatus();
+			document.getElementById('aid-footer').classList.remove('aid-hidden');
+			updateFooterStatus();
 
-				if (currentArticleIds.length > 0) {
-					document.getElementById('aid-mark-all-btn').style.display = '';
-				}
+			if (currentArticleIds.length > 0) {
+				document.getElementById('aid-mark-all-btn').classList.remove('aid-hidden');
+			}
 			})
 			.catch(function(err) {
 				document.getElementById('aid-error-msg').textContent = err.message || 'Une erreur est survenue';
@@ -447,7 +447,10 @@
 			if (!p) return;
 
 			var keyField = gid('aid-field-key');
-			if (keyField) keyField.style.display = p.needs_key ? '' : 'none';
+			if (keyField) {
+				if (p.needs_key) keyField.classList.remove('aid-hidden');
+				else keyField.classList.add('aid-hidden');
+			}
 
 			var urlInput = gid('aid-api-url');
 			if (urlInput) {
@@ -484,8 +487,8 @@
 		if (modelSel && modelInput) {
 			modelSel.addEventListener('change', function() {
 				if (this.value === '__custom__') {
-					this.style.display = 'none';
-					modelInput.style.display = '';
+					this.classList.add('aid-hidden');
+					modelInput.classList.remove('aid-hidden');
 					modelInput.focus();
 				} else {
 					modelInput.value = this.value;
@@ -493,8 +496,8 @@
 			});
 			modelInput.addEventListener('blur', function() {
 				if (this.value && modelSel.options.length > 1) {
-					modelSel.style.display = '';
-					this.style.display = 'none';
+					modelSel.classList.remove('aid-hidden');
+					this.classList.add('aid-hidden');
 				}
 			});
 			if (modelSel.value && modelSel.value !== '__custom__') {
@@ -530,7 +533,8 @@
 		var emailSettings = gid('aid-email-settings');
 		if (emailToggle && emailSettings) {
 			emailToggle.addEventListener('change', function() {
-				emailSettings.style.display = this.checked ? '' : 'none';
+				if (this.checked) emailSettings.classList.remove('aid-hidden');
+				else emailSettings.classList.add('aid-hidden');
 			});
 		}
 
@@ -552,8 +556,8 @@
 			testBtn.addEventListener('click', function() {
 				var btn = this;
 				btn.disabled = true;
-				testResult.style.display = '';
-				testResult.className = 'adc-test-result';
+				testResult.classList.remove('aid-hidden');
+				testResult.className = 'aid-test-result';
 				testResult.textContent = 'Test en cours…';
 
 				fetch('/i/?aiDigestAction=testConnection')

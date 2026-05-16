@@ -47,7 +47,7 @@ Articles:
 			. '</svg>';
 		return '<li class="aid-nav-item">'
 			. '<button id="ai-digest-trigger" class="aid-trigger-btn" '
-			. 'title="Résumer les articles non lus avec l\'IA" onclick="(window._aidOpen||function(){})();return false;">'
+			. 'title="Résumer les articles non lus avec l\'IA">'
 			. '<span class="aid-trigger-icon">' . $svg . '</span>'
 			. '<span class="aid-trigger-label">Résumé IA</span>'
 			. '</button>'
@@ -218,7 +218,7 @@ Articles:
 		$traversable = $entryDAO->listWhere(
 			type: $type,
 			id: $id,
-			state: FreshRSS_Entry::STATE_UNREAD,
+			state: FreshRSS_Entry::STATE_NOT_READ,
 			limit: $maxArticles,
 		);
 
