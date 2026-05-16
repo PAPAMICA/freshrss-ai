@@ -736,6 +736,8 @@ body.aid-modal-open {
 /* Grids */
 .aid-cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.2em }
 .aid-cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 1em }
+/* Prevent grid cells from overflowing their track */
+.aid-cols-2 > *, .aid-cols-3 > * { min-width: 0 }
 
 /* Inline row (input + button side by side) */
 .aid-inline { display: flex; gap: .4em; align-items: center }
@@ -743,8 +745,8 @@ body.aid-modal-open {
 .aid-inline .btn { flex-shrink: 0; white-space: nowrap }
 
 /* Slider */
-.aid-slider-wrap { display: flex; align-items: center; gap: .6em }
-.aid-slider-wrap input[type=range] { flex: 1 }
+.aid-slider-wrap { display: flex; align-items: center; gap: .6em; min-width: 0 }
+.aid-slider-wrap input[type=range] { flex: 1; min-width: 0; width: 100% }
 
 /* Value badge on sliders */
 .aid-badge {

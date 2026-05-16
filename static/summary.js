@@ -36,7 +36,7 @@
 	}
 
 	function buildUrl(action, extra) {
-		const params = new URLSearchParams({ aiDigestAction: action });
+		const params = new URLSearchParams({ aiDigestAction: action, _t: Date.now() });
 		if (extra) Object.keys(extra).forEach(k => params.set(k, extra[k]));
 		return '?' + params.toString();
 	}

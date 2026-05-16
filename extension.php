@@ -563,24 +563,88 @@ HTML;
 	}
 
 	private function sendEmailSmtp(string $to, string $subject, string $htmlBody): bool {
-		$host = (string) $this->cfg('smtp_host', '');
-		$port = (int) $this->cfg('smtp_port', 587);
-		$user = (string) $this->cfg('smtp_user', '');
-		$pass = (string) $this->cfg('smtp_pass', '');
-		$tls = (bool) $this->cfg('smtp_tls', true);
-		$from = (string) $this->cfg('email_from', 'freshrss@localhost');
-		$fromName = (string) $this->cfg('email_from_name', 'FreshRSS AI Digest');
+		$host      = (string) $this->cfg('smtp_host', '');
+		$port      = (int)    $this->cfg('smtp_port', 587);
+		$user      = (string) $this->cfg('smtp_user', '');
+		$pass      = (string) $this->cfg('smtp_pass', '');
+		$tls       = (bool)   $this->cfg('smtp_tls', true);
+		$from      = (string) $this->cfg('email_from', 'freshrss@localhost');
+		$fromName  = (string) $this->cfg('email_from_name', 'FreshRSS AI Digest');
+		$ehlo      = gethostname() ?: 'localhost';
 
-		$prefix = $tls ? 'tls://' : '';
-		$socket = @fsockopen($prefix . $host, $port, $errno, $errstr, 10);
+		// Port 465 = SMTPS (SSL dès la connexion)
+		// Port 587/25 = STARTTLS (connexion TCP puis upgrade)
+		$isSmtps = ($port === 465);
+		$prefix  = $isSmtps ? 'ssl://' : '';
+
+		$context = stream_context_create([
+			'ssl' => [
+				'verify_peer'       => true,
+				'verify_peer_name'  => true,
+				'allow_self_signed' => false,
+			],
+		]);
+
+		$socket = @stream_socket_client(
+			$prefix . $host . ':' . $port,
+			$errno, $errstr, 15,
+			STREAM_CLIENT_CONNECT, $context
+		);
 
 		if (!$socket) {
-			throw new Exception('SMTP connexion échouée : ' . $errstr . ' (' . $errno . ')');
+			throw new Exception('SMTP connexion échouée : ' . ($errstr ?: 'hôte inaccessible') . ' (code ' . $errno . ')');
 		}
 
-		$boundary = md5((string) time());
-		$messageId = '<' . time() . '.' . rand() . '@freshrss>';
+		stream_set_timeout($socket, 15);
 
+		$recv = function() use ($socket): string {
+			$response = '';
+			while ($line = fgets($socket, 512)) {
+				$response .= $line;
+				if (isset($line[3]) && $line[3] === ' ') {
+					break;
+				}
+			}
+			return $response;
+		};
+
+		$send = function(string $cmd) use ($socket): void {
+			fputs($socket, $cmd . "\r\n");
+		};
+
+		$recv(); // banner serveur
+		$send('EHLO ' . $ehlo);
+		$recv();
+
+		// STARTTLS sur port 587 (ou tout port non-465 avec TLS activé)
+		if ($tls && !$isSmtps) {
+			$send('STARTTLS');
+			$res = $recv();
+			if (!str_starts_with(trim($res), '220')) {
+				throw new Exception('STARTTLS refusé par le serveur : ' . trim($res));
+			}
+			if (!stream_socket_enable_crypto($socket, true, STREAM_CRYPTO_METHOD_TLS_CLIENT)) {
+				throw new Exception('Négociation TLS échouée');
+			}
+			// Ré-identifier après STARTTLS
+			$send('EHLO ' . $ehlo);
+			$recv();
+		}
+
+		// Authentification
+		if (!empty($user) && !empty($pass)) {
+			$send('AUTH LOGIN');
+			$recv();
+			$send(base64_encode($user));
+			$recv();
+			$send(base64_encode($pass));
+			$authResp = $recv();
+			if (!str_starts_with(trim($authResp), '235')) {
+				throw new Exception('SMTP authentification échouée : ' . trim($authResp));
+			}
+		}
+
+		$messageId = '<' . time() . '.' . random_int(1000, 9999) . '@freshrss>';
 		$headers = implode("\r\n", [
 			'MIME-Version: 1.0',
 			'Content-Type: text/html; charset=UTF-8',
@@ -591,34 +655,6 @@ HTML;
 			'Date: ' . date('r'),
 		]);
 
-		$recv = function() use ($socket) {
-			$response = '';
-			while ($line = fgets($socket, 515)) {
-				$response .= $line;
-				if (substr($line, 3, 1) === ' ') {
-					break;
-				}
-			}
-			return $response;
-		};
-
-		$send = function(string $cmd) use ($socket) {
-			fputs($socket, $cmd . "\r\n");
-		};
-
-		$recv(); // banner
-		$send('EHLO ' . gethostname());
-		$recv();
-
-		if (!empty($user) && !empty($pass)) {
-			$send('AUTH LOGIN');
-			$recv();
-			$send(base64_encode($user));
-			$recv();
-			$send(base64_encode($pass));
-			$recv();
-		}
-
 		$send('MAIL FROM:<' . $from . '>');
 		$recv();
 		$send('RCPT TO:<' . $to . '>');
@@ -626,9 +662,13 @@ HTML;
 		$send('DATA');
 		$recv();
 		$send($headers . "\r\n\r\n" . $htmlBody . "\r\n.");
-		$recv();
+		$dataResp = $recv();
 		$send('QUIT');
 		fclose($socket);
+
+		if (!str_starts_with(trim($dataResp), '250')) {
+			throw new Exception('Envoi rejeté par le serveur : ' . trim($dataResp));
+		}
 
 		return true;
 	}
