@@ -65,8 +65,13 @@ function aidIcon(string $name, int $size = 16): string {
 	return "<svg {$base}>{$inner}</svg>";
 }
 
-// FreshRSS uses parameter 'e' (not 'ext_name') to identify the extension in configure action
+// FreshRSS uses parameter 'e' (not 'ext_name') to identify the extension in configure action.
+// When loaded via AJAX (ajax=1), the form action must also include ajax=1 so that after
+// saving, FreshRSS re-renders only the panel content (not the full page layout).
 $formAction = '?c=extension&a=configure&e=' . urlencode($this->getName());
+if (Minz_Request::paramBoolean('ajax')) {
+	$formAction .= '&ajax=1';
+}
 ?>
 
 <div class="ai-digest-config">
@@ -144,7 +149,6 @@ $formAction = '?c=extension&a=configure&e=' . urlencode($this->getName());
 	</div>
 
 	<form method="post" action="<?= htmlspecialchars($formAction) ?>" class="adc-form">
-		<input type="hidden" name="token" value="<?= htmlspecialchars((string)Minz_Session::param('token', '')) ?>">
 
 		<!-- ─── Fournisseur IA ──────────────────────────────────────── -->
 		<div class="adc-section">
