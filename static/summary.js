@@ -1247,33 +1247,36 @@ function updateNewsletterSidebarList(section) {
 		// Watch for configure page being loaded via FreshRSS AJAX
 		// and for new articles being added to the list
 		var observer = new MutationObserver(function(mutations) {
-			var shouldDecorate = false;
+			var hasNativeFlux = false;
 			for (var i = 0; i < mutations.length; i++) {
 				var nodes = mutations[i].addedNodes;
 				for (var j = 0; j < nodes.length; j++) {
-					if (nodes[j].nodeType === 1) {
-						initConfigPage(nodes[j].ownerDocument);
-						if (nodes[j].classList && (nodes[j].classList.contains('flux') || nodes[j].querySelector && nodes[j].querySelector('.flux'))) {
-							shouldDecorate = true;
-						}
+					var node = nodes[j];
+					if (node.nodeType !== 1) continue;
+					initConfigPage(node.ownerDocument);
+					// Ne compter que les .flux natifs (pas ceux de l'extension)
+					if (node.classList && node.classList.contains('flux') && !node.classList.contains('aid-newsletter-flux')) {
+						hasNativeFlux = true;
+					} else if (node.querySelector && node.querySelector('.flux:not(.aid-newsletter-flux)')) {
+						hasNativeFlux = true;
 					}
 				}
 			}
-			if (shouldDecorate) {
-			decorateEmailedArticles();
-			// Si FreshRSS vient d'ajouter des articles natifs, restaurer l'affichage normal
-			var nlItems = document.querySelectorAll('.aid-newsletter-flux');
-			if (nlItems.length) {
-				nlItems.forEach(function(el) { el.remove(); });
-				setStreamEmptyPromptVisible(true);
-				var nlSection = document.getElementById('aid-newsletter-section');
-				if (nlSection) nlSection.classList.remove('active');
+			if (hasNativeFlux) {
+				decorateEmailedArticles();
+				// Des articles natifs FreshRSS viennent d'être chargés : nettoyer la vue newsletter
+				var nlItems = document.querySelectorAll('.aid-newsletter-flux');
+				if (nlItems.length) {
+					nlItems.forEach(function(el) { el.remove(); });
+					setStreamEmptyPromptVisible(true);
+					var nlSection = document.getElementById('aid-newsletter-section');
+					if (nlSection) nlSection.classList.remove('active');
+				}
 			}
-		}
-		// Retry sidebar injection if the categories nav just appeared (only once history is loaded)
-		if (!document.getElementById('aid-newsletter-section') && findSidebarContainer() && historyLoaded) {
-			tryInjectNewsletterSidebar();
-		}
+			// Retry sidebar injection if the categories nav just appeared (only once history is loaded)
+			if (!document.getElementById('aid-newsletter-section') && findSidebarContainer() && historyLoaded) {
+				tryInjectNewsletterSidebar();
+			}
 		});
 		observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
 	}
