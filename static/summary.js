@@ -227,13 +227,13 @@
 	}
 
 	function markAllRead() {
-		var checkboxes = document.querySelectorAll('.aid-article-check:checked');
-		var ids = Array.from(checkboxes).map(function(cb) { return cb.value; }).filter(function(id) {
+		// Use all article IDs from the summary, minus those already marked read
+		var ids = currentArticleIds.filter(function(id) {
 			return !markedReadIds.has(id);
 		});
 
 		if (ids.length === 0) {
-			showNotification('Tous les articles sélectionnés sont déjà marqués comme lus.', 'info');
+			showNotification('Tous les articles sont déjà marqués comme lus.', 'info');
 			return;
 		}
 
