@@ -266,17 +266,30 @@ Articles:
 	// ─── Data storage helpers ─────────────────────────────────────────────────
 
 	private function dataDir(): string {
-		// Prefer FreshRSS's writable DATA_PATH (always accessible by web server)
-		$base = defined('DATA_PATH') && is_dir(DATA_PATH)
-			? DATA_PATH . DIRECTORY_SEPARATOR . 'ai-newsletter'
-			: __DIR__ . DIRECTORY_SEPARATOR . 'data';
+		static $resolved = null;
+		if ($resolved !== null) return $resolved;
 
-		if (!is_dir($base) && !@mkdir($base, 0755, true)) {
-			// Last resort: system temp dir
-			$base = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ai-newsletter';
-			@mkdir($base, 0755, true);
+		$candidates = [];
+		// FreshRSS DATA_PATH is always writable by www-data
+		if (defined('DATA_PATH') && is_dir(DATA_PATH)) {
+			$candidates[] = DATA_PATH . DIRECTORY_SEPARATOR . 'ai-newsletter';
 		}
-		return $base;
+		// Extension local dir (writable if installed manually, not via root git)
+		$candidates[] = __DIR__ . DIRECTORY_SEPARATOR . 'data';
+		// Absolute fallback
+		$candidates[] = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'freshrss-ai-newsletter';
+
+		foreach ($candidates as $dir) {
+			if (is_dir($dir)) { $resolved = $dir; return $dir; }
+			if (@mkdir($dir, 0755, true)) {
+				Minz_Log::notice('NewsletterAI: données stockées dans ' . $dir);
+				$resolved = $dir;
+				return $dir;
+			}
+		}
+		$resolved = sys_get_temp_dir();
+		Minz_Log::error('NewsletterAI: impossible de créer le dossier de données !');
+		return $resolved;
 	}
 
 	private function readData(string $name, mixed $default = []): mixed {

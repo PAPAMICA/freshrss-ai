@@ -624,6 +624,9 @@
 			});
 		}
 
+		// ── Newsletter history on configure page ──────────────────────────
+		populateConfigHistory();
+
 		// ── Test email ─────────────────────────────────────────────────────
 		var testEmailBtn    = gid('aid-test-email');
 		var forceSendBtn    = gid('aid-force-send');
@@ -723,18 +726,71 @@
 
 	var newsletterHistory = [];
 	var sidebarRetries = 0;
+	var historyLoaded = false;
 
 	function loadNewsletterHistory() {
 		fetch(buildUrl('emailHistory'))
 			.then(function(r) { return r.json(); })
 			.then(function(data) {
 				newsletterHistory = Array.isArray(data.history) ? data.history : [];
-				tryInjectNewsletterSidebar();
+				historyLoaded = true;
+				refreshNewsletterContent();
 			})
-			.catch(function() { tryInjectNewsletterSidebar(); });
+			.catch(function() {
+				historyLoaded = true;
+				refreshNewsletterContent();
+			});
+	}
+
+	function refreshNewsletterContent() {
+		var existing = document.getElementById('aid-newsletter-section');
+		if (existing) {
+			updateNewsletterSidebarList(existing);
+		} else {
+			tryInjectNewsletterSidebar();
+		}
+		populateConfigHistory();
+	}
+
+	function buildNewsletterListItems() {
+		if (!newsletterHistory.length) {
+			return '<li class="item aid-nl-empty"><span>Aucun digest envoyé pour l\'instant</span></li>';
+		}
+		return newsletterHistory.map(function(rec, idx) {
+			var d = new Date(rec.ts * 1000);
+			var label = d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+			return '<li class="item feed aid-newsletter-item" data-idx="' + idx + '">'
+				+ '<a href="#" class="item-title aid-newsletter-link" data-unread="0">'
+				+ '<span class="aid-nl-favicon">' + EMAILED_SVG + '</span>'
+				+ '<span class="title">' + escapeHtml(label) + ' <span class="aid-nl-count">(' + rec.count + ')</span></span>'
+				+ '</a></li>';
+		}).join('');
+	}
+
+	function updateNewsletterSidebarList(section) {
+		var list = section.querySelector('.aid-newsletter-list');
+		if (list) {
+			list.innerHTML = buildNewsletterListItems();
+			section.querySelectorAll('.aid-newsletter-link').forEach(function(link) {
+				link.addEventListener('click', function(e) {
+					e.preventDefault();
+					var idx = parseInt(this.closest('.aid-newsletter-item').getAttribute('data-idx'), 10);
+					openNewsletterEmail(idx);
+				});
+			});
+		}
+		var titleEl = section.querySelector('.aid-newsletter-title .title');
+		if (titleEl) {
+			var badge = newsletterHistory.length
+				? '<span class="unread aid-nl-badge" data-unread="' + newsletterHistory.length + '">' + newsletterHistory.length + '</span>'
+				: '';
+			titleEl.innerHTML = 'Newsletter IA ' + badge;
+			titleEl.setAttribute('data-unread', newsletterHistory.length);
+		}
 	}
 
 	function tryInjectNewsletterSidebar() {
+		if (!historyLoaded) return;
 		if (document.getElementById('aid-newsletter-section')) return;
 		var inserted = injectNewsletterSidebar();
 		// Retry up to 10× with increasing delay if sidebar not in DOM yet
@@ -763,17 +819,7 @@
 		section.className = 'tree-folder category aid-newsletter-section';
 		section.id = 'aid-newsletter-section';
 
-		var listItems = newsletterHistory.length
-			? newsletterHistory.map(function(rec, idx) {
-				var d     = new Date(rec.ts * 1000);
-				var label = d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-				return '<li class="item feed aid-newsletter-item" data-idx="' + idx + '">'
-					+ '<a href="#" class="item-title aid-newsletter-link">'
-					+ label
-					+ '<span class="aid-nl-count"> — ' + rec.count + ' articles</span>'
-					+ '</a></li>';
-			}).join('')
-			: '<li class="item aid-nl-empty"><span>Aucun digest envoyé pour l\'instant</span></li>';
+		var listItems = buildNewsletterListItems();
 
 		var badge = newsletterHistory.length
 			? '<span class="unread aid-nl-badge" data-unread="' + newsletterHistory.length + '">' + newsletterHistory.length + '</span>'
@@ -829,16 +875,29 @@
 		var subForm = document.createElement('div');
 		subForm.className = 'aid-subscribe-form';
 		subForm.innerHTML = [
-			'<details class="aid-subscribe-details">',
-			'  <summary class="aid-subscribe-toggle">S\'abonner à la newsletter</summary>',
-			'  <div class="aid-subscribe-body">',
+			'<button type="button" class="aid-subscribe-toggle-btn">',
+			'  <span class="aid-subscribe-toggle-icon">',
+			'    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="13" height="13"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>',
+			'  </span>',
+			'  S\'abonner à la newsletter',
+			'</button>',
+			'<div class="aid-subscribe-body aid-hidden">',
+			'  <div class="aid-subscribe-row">',
 			'    <input type="email" class="aid-subscribe-input" placeholder="votre@email.com">',
 			'    <button class="aid-subscribe-btn btn">S\'abonner</button>',
-			'    <span class="aid-subscribe-status"></span>',
 			'  </div>',
-			'</details>',
+			'  <span class="aid-subscribe-status"></span>',
+			'</div>',
 		].join('');
 		section.appendChild(subForm);
+
+		subForm.querySelector('.aid-subscribe-toggle-btn').addEventListener('click', function() {
+			var body = subForm.querySelector('.aid-subscribe-body');
+			body.classList.toggle('aid-hidden');
+			if (!body.classList.contains('aid-hidden')) {
+				subForm.querySelector('.aid-subscribe-input').focus();
+			}
+		});
 
 		subForm.querySelector('.aid-subscribe-btn').addEventListener('click', function() {
 			var input  = subForm.querySelector('.aid-subscribe-input');
@@ -852,13 +911,62 @@
 				.then(function(data) {
 					status.textContent = data.message || data.error || '';
 					status.className   = 'aid-subscribe-status ' + (data.success ? 'ok' : 'err');
-					if (data.success) input.value = '';
+					if (data.success) {
+						input.value = '';
+						setTimeout(function() { subForm.querySelector('.aid-subscribe-body').classList.add('aid-hidden'); }, 2000);
+					}
 				})
 				.catch(function() { status.textContent = 'Erreur réseau'; status.className = 'aid-subscribe-status err'; })
 				.finally(function() { subForm.querySelector('.aid-subscribe-btn').disabled = false; });
 		});
 
 		return true;
+	}
+
+	// ─── Configure page newsletter history ────────────────────────────────────
+
+	function populateConfigHistory() {
+		var container = document.getElementById('aid-nl-history-list');
+		if (!container) return;
+
+		if (!newsletterHistory.length) {
+			container.innerHTML = '<p class="aid-hint">Aucun digest envoyé pour l\'instant.</p>';
+			return;
+		}
+
+		container.innerHTML = '';
+		newsletterHistory.forEach(function(rec, idx) {
+			var d = new Date(rec.ts * 1000);
+			var dateStr = d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+			var item = document.createElement('div');
+			item.className = 'flux not_read aid-digest-flux';
+			item.setAttribute('data-idx', idx);
+
+			item.innerHTML = [
+				'<ul class="horizontal-list flux_header">',
+				'  <li class="item website full">',
+				'    <span class="item-element aid-digest-source">',
+				'      <span class="aid-nl-favicon">' + EMAILED_SVG + '</span>',
+				'      <span class="websiteName">Newsletter IA</span>',
+				'    </span>',
+				'  </li>',
+				'  <li class="item titleAuthorSummaryDate">',
+				'    <span class="item-element title aid-digest-title">Digest du ' + escapeHtml(dateStr) + '</span>',
+				'    <span class="item-element date">' + rec.count + ' article' + (rec.count > 1 ? 's' : '') + '</span>',
+				'  </li>',
+				'  <li class="item link">',
+				'    <button class="btn aid-digest-view-btn" data-idx="' + idx + '" title="Voir le digest">Voir</button>',
+				'  </li>',
+				'</ul>',
+			].join('\n');
+
+			item.querySelector('.aid-digest-view-btn').addEventListener('click', function() {
+				openNewsletterEmail(idx);
+			});
+
+			container.appendChild(item);
+		});
 	}
 
 	function openNewsletterEmail(idx) {
@@ -927,10 +1035,10 @@
 				}
 			}
 			if (shouldDecorate) decorateEmailedArticles();
-			// Retry sidebar injection if the categories nav just appeared
-			if (!document.getElementById('aid-newsletter-section') && findSidebarContainer()) {
-				tryInjectNewsletterSidebar();
-			}
+		// Retry sidebar injection if the categories nav just appeared (only once history is loaded)
+		if (!document.getElementById('aid-newsletter-section') && findSidebarContainer() && historyLoaded) {
+			tryInjectNewsletterSidebar();
+		}
 		});
 		observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
 	}

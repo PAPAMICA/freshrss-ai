@@ -294,6 +294,14 @@ if (Minz_Request::paramBoolean('ajax')) {
 
 </div>
 
+<!-- ═══════════════════ Historique newsletters ═══════════════════ -->
+<section>
+<h3>Historique des newsletters</h3>
+<div id="aid-nl-history-list" class="aid-nl-history-container">
+	<p class="aid-hint">Chargement de l'historique…</p>
+</div>
+</section>
+
 <div id="aid-config-data"
 	data-providers="<?= htmlspecialchars(json_encode(array_map(fn($p) => ['url' => $p['url'], 'models' => $p['models'], 'needs_key' => $p['needs_key'], 'needs_url' => $p['needs_url']], $providers), JSON_UNESCAPED_UNICODE), ENT_QUOTES) ?>"
 	data-default-prompt="<?= htmlspecialchars($defaultPrompt, ENT_QUOTES) ?>"

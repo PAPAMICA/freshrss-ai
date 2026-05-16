@@ -870,9 +870,19 @@ body.aid-modal-open {
 }
 
 .aid-newsletter-item .aid-newsletter-link {
-	display: block;
+	display: flex;
+	align-items: center;
+	gap: 4px;
 	font-size: 12px;
 	line-height: 1.4;
+	/* Override FreshRSS item-title to keep consistent layout */
+	text-decoration: none;
+}
+
+.aid-newsletter-item .aid-newsletter-link .title {
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
 }
 
 .aid-nl-count {
@@ -888,31 +898,69 @@ body.aid-modal-open {
 	font-style: italic;
 }
 
+/* ─── Newsletter favicon icon ────────────────────────────────────────── */
+
+.aid-nl-favicon {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 16px;
+	height: 16px;
+	flex-shrink: 0;
+	margin-right: 2px;
+	vertical-align: middle;
+}
+
+.aid-nl-favicon .aid-emailed-icon,
+.aid-nl-favicon svg {
+	width: 13px;
+	height: 13px;
+	opacity: .7;
+}
+
 /* ─── Newsletter subscription form ─────────────────────────────────── */
 
-.aid-subscribe-details {
-	padding: 4px 8px 8px;
+.aid-subscribe-form {
 	border-top: 1px solid var(--color-border, #ddd);
-	margin-top: 4px;
+	margin-top: 2px;
 }
 
-.aid-subscribe-toggle {
-	font-size: 11px;
-	font-weight: 600;
-	color: var(--color-accent, #0060df);
-	cursor: pointer;
-	padding: 4px 0;
-	list-style: none;
-}
-
-.aid-subscribe-toggle::-webkit-details-marker { display: none; }
-
-.aid-subscribe-body {
+.aid-subscribe-toggle-btn {
 	display: flex;
 	align-items: center;
+	gap: 6px;
+	width: 100%;
+	padding: 6px 8px;
+	background: none;
+	border: none;
+	cursor: pointer;
+	font-size: 12px;
+	font-weight: 500;
+	color: var(--color-accent, #0060df);
+	text-align: left;
+	transition: background 0.15s;
+}
+
+.aid-subscribe-toggle-btn:hover {
+	background: var(--color-background-alt, rgba(0,0,0,.04));
+}
+
+.aid-subscribe-toggle-icon {
+	display: inline-flex;
+	align-items: center;
+	flex-shrink: 0;
+	opacity: .8;
+}
+
+.aid-subscribe-body {
+	padding: 6px 8px 8px;
+	background: var(--color-background-alt, rgba(0,0,0,.02));
+}
+
+.aid-subscribe-row {
+	display: flex;
 	gap: 5px;
-	margin-top: 6px;
-	flex-wrap: wrap;
+	align-items: center;
 }
 
 .aid-subscribe-input {
@@ -926,19 +974,98 @@ body.aid-modal-open {
 	color: var(--color-text, #333);
 }
 
+.aid-subscribe-input:focus {
+	outline: none;
+	border-color: var(--color-accent, #0060df);
+}
+
 .aid-subscribe-btn {
 	font-size: 11px;
 	padding: 4px 10px;
 	white-space: nowrap;
+	flex-shrink: 0;
 }
 
 .aid-subscribe-status {
+	display: block;
 	font-size: 11px;
-	width: 100%;
+	margin-top: 4px;
+	min-height: 14px;
 }
 
 .aid-subscribe-status.ok  { color: #16a34a }
 .aid-subscribe-status.err { color: #dc2626 }
+
+/* ─── Configure page newsletter history list ────────────────────────── */
+
+.aid-nl-history-container {
+	margin-top: .5em;
+}
+
+.aid-digest-flux {
+	border: 1px solid var(--color-border, #ddd);
+	border-radius: 4px;
+	margin-bottom: 6px;
+	background: var(--color-background, #fff);
+	transition: border-color 0.15s;
+}
+
+.aid-digest-flux:hover {
+	border-color: var(--color-accent, #0060df);
+}
+
+.aid-digest-flux .flux_header {
+	display: flex;
+	align-items: center;
+	padding: 8px 10px;
+	gap: 0;
+	list-style: none;
+	margin: 0;
+}
+
+.aid-digest-source {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	font-size: 12px;
+	font-weight: 600;
+	color: var(--color-secondary, #666);
+	white-space: nowrap;
+	min-width: 120px;
+}
+
+.aid-digest-source .websiteName {
+	font-size: 12px;
+}
+
+.aid-digest-title {
+	font-size: 13px;
+	font-weight: 600;
+	color: var(--color-title, inherit);
+	flex: 1;
+}
+
+.aid-digest-flux .item.titleAuthorSummaryDate {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	gap: 12px;
+}
+
+.aid-digest-flux .item.titleAuthorSummaryDate .date {
+	font-size: 11px;
+	color: var(--color-secondary, #888);
+	white-space: nowrap;
+}
+
+.aid-digest-flux .item.link {
+	padding-left: 8px;
+}
+
+.aid-digest-view-btn {
+	font-size: 12px;
+	padding: 3px 10px;
+}
 
 /* ─── Newsletter email viewer overlay ───────────────────────────────── */
 
