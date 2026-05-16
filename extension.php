@@ -2,7 +2,7 @@
 
 declare(strict_types=1);
 
-class AIDigestExtension extends Minz_Extension {
+class NewsletterAIExtension extends Minz_Extension {
 
 	private const DEFAULT_PROMPT = 'You are an experienced news editor and cybersecurity analyst.
 
@@ -75,7 +75,9 @@ Articles:
 			. '<path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.65-4.56A2.5 2.5 0 0 1 2 12a2.5 2.5 0 0 1 2.39-2.48 2.5 2.5 0 0 1 1.65-4.56A2.5 2.5 0 0 1 9.5 2Z"/>'
 			. '<path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.65-4.56A2.5 2.5 0 0 0 22 12a2.5 2.5 0 0 0-2.39-2.48 2.5 2.5 0 0 0-1.65-4.56A2.5 2.5 0 0 0 14.5 2Z"/>'
 			. '</svg>';
-		return '<li class="aid-nav-item">'
+		// aid-auth-marker tells the JS that the user is authenticated
+		return '<span id="aid-auth-marker" aria-hidden="true"></span>'
+			. '<li class="aid-nav-item">'
 			. '<button id="ai-digest-trigger" class="aid-trigger-btn" '
 			. 'title="Résumer les articles non lus avec l\'IA">'
 			. '<span class="aid-trigger-icon">' . $svg . '</span>'
@@ -127,11 +129,40 @@ Articles:
 			case 'config':
 				echo json_encode($this->getPublicConfig(), JSON_UNESCAPED_UNICODE);
 				break;
-			case 'testConnection':
-				echo json_encode($this->testConnection(), JSON_UNESCAPED_UNICODE);
-				break;
-			default:
-				echo json_encode(['error' => 'Action inconnue'], JSON_UNESCAPED_UNICODE);
+		case 'testConnection':
+			echo json_encode($this->testConnection(), JSON_UNESCAPED_UNICODE);
+			break;
+		case 'subscribe':
+			$email = (string) Minz_Request::param('email', '');
+			echo json_encode($this->addSubscriber($email), JSON_UNESCAPED_UNICODE);
+			break;
+		case 'unsubscribe':
+			$email = (string) Minz_Request::param('email', '');
+			echo json_encode($this->removeSubscriber($email), JSON_UNESCAPED_UNICODE);
+			break;
+		case 'subscribers':
+			echo json_encode(['subscribers' => $this->getSubscribers()], JSON_UNESCAPED_UNICODE);
+			break;
+		case 'emailedIds':
+			echo json_encode(['ids' => $this->getEmailedIds()], JSON_UNESCAPED_UNICODE);
+			break;
+		case 'emailHistory':
+			$history = array_map(function($r) {
+				return ['ts' => $r['ts'], 'subject' => $r['subject'], 'count' => $r['count']];
+			}, $this->getEmailHistory());
+			echo json_encode(['history' => $history], JSON_UNESCAPED_UNICODE);
+			break;
+		case 'emailContent':
+			$idx = (int) Minz_Request::param('idx', 0);
+			$history = $this->getEmailHistory();
+			if (isset($history[$idx])) {
+				echo json_encode(['html' => $history[$idx]['html']], JSON_UNESCAPED_UNICODE);
+			} else {
+				echo json_encode(['error' => 'Introuvable'], JSON_UNESCAPED_UNICODE);
+			}
+			break;
+		default:
+			echo json_encode(['error' => 'Action inconnue'], JSON_UNESCAPED_UNICODE);
 		}
 		exit;
 	}
@@ -162,7 +193,7 @@ Articles:
 			$current['email_enabled']   = Minz_Request::param('email_enabled') === '1';
 			$current['email_to']        = (string) Minz_Request::param('email_to', $current['email_to'] ?? '');
 			$current['email_from']      = (string) Minz_Request::param('email_from', $current['email_from'] ?? '');
-			$current['email_from_name'] = (string) Minz_Request::param('email_from_name', $current['email_from_name'] ?? 'FreshRSS AI Digest');
+			$current['email_from_name'] = (string) Minz_Request::param('email_from_name', $current['email_from_name'] ?? 'Newsletter AI');
 			$current['email_schedule']  = (string) Minz_Request::param('email_schedule', $current['email_schedule'] ?? 'never');
 			$current['email_hour']      = min(23, max(0, (int) Minz_Request::param('email_hour', $current['email_hour'] ?? 8)));
 			$current['smtp_host']       = (string) Minz_Request::param('smtp_host', $current['smtp_host'] ?? '');
@@ -203,25 +234,28 @@ Articles:
 
 	// ─── Core: summary generation ──────────────────────────────────────────────
 
-	private function generateSummary(string $get): array {
+	private function generateSummary(string $get, bool $excludeEmailed = false): array {
 		try {
-			$entries = $this->fetchUnreadEntries($get);
+			$entries = $this->fetchUnreadEntries($get, $excludeEmailed);
 			if (empty($entries)) {
-				return ['success' => false, 'error' => 'Aucun article non lu trouvé dans cette vue.'];
+				$msg = $excludeEmailed
+					? 'Aucun article non lu non encore envoyé par email.'
+					: 'Aucun article non lu trouvé dans cette vue.';
+				return ['success' => false, 'error' => $msg];
 			}
 
-			$prompt = $this->buildPrompt($entries);
+			$prompt  = $this->buildPrompt($entries);
 			$summary = $this->callLLM($prompt);
 
-			$articleIds = array_map(fn($e) => $e['id'], $entries);
+			$articleIds    = array_map(fn($e) => $e['id'], $entries);
 			$articleTitles = array_map(fn($e) => ['id' => $e['id'], 'title' => $e['title'], 'link' => $e['link']], $entries);
 
 			return [
-				'success' => true,
-				'summary' => $summary,
+				'success'     => true,
+				'summary'     => $summary,
 				'article_ids' => $articleIds,
-				'articles' => $articleTitles,
-				'count' => count($entries),
+				'articles'    => $articleTitles,
+				'count'       => count($entries),
 			];
 		} catch (Exception $e) {
 			Minz_Log::error('AIDigest::generateSummary error: ' . $e->getMessage());
@@ -229,11 +263,97 @@ Articles:
 		}
 	}
 
+	// ─── Data storage helpers ─────────────────────────────────────────────────
+
+	private function dataDir(): string {
+		$dir = __DIR__ . '/data';
+		if (!is_dir($dir)) {
+			mkdir($dir, 0755, true);
+		}
+		return $dir;
+	}
+
+	private function readData(string $name, mixed $default = []): mixed {
+		$file = $this->dataDir() . '/' . $name . '.json';
+		if (!file_exists($file)) return $default;
+		return json_decode((string) file_get_contents($file), true) ?? $default;
+	}
+
+	private function writeData(string $name, mixed $data): void {
+		file_put_contents($this->dataDir() . '/' . $name . '.json', json_encode($data, JSON_UNESCAPED_UNICODE));
+	}
+
+	// ─── Emailed articles tracking ────────────────────────────────────────────
+
+	private function getEmailedIds(): array {
+		return (array) $this->readData('emailed_ids', []);
+	}
+
+	private function markArticlesAsEmailed(array $ids): void {
+		$existing = $this->getEmailedIds();
+		$merged   = array_unique(array_merge($existing, array_map('strval', $ids)));
+		// Keep only the last 5000 to avoid unbounded growth
+		if (count($merged) > 5000) {
+			$merged = array_slice($merged, -5000);
+		}
+		$this->writeData('emailed_ids', array_values($merged));
+	}
+
+	// ─── Subscribers ──────────────────────────────────────────────────────────
+
+	private function getSubscribers(): array {
+		return (array) $this->readData('subscribers', []);
+	}
+
+	private function addSubscriber(string $email): array {
+		$email = filter_var(trim($email), FILTER_VALIDATE_EMAIL);
+		if (!$email) {
+			return ['success' => false, 'error' => 'Adresse email invalide'];
+		}
+		$list = $this->getSubscribers();
+		if (in_array($email, $list, true)) {
+			return ['success' => false, 'error' => 'Cette adresse est déjà abonnée'];
+		}
+		$list[] = $email;
+		$this->writeData('subscribers', $list);
+		return ['success' => true, 'message' => $email . ' abonné(e) avec succès'];
+	}
+
+	private function removeSubscriber(string $email): array {
+		$list    = $this->getSubscribers();
+		$filtered = array_values(array_filter($list, fn($e) => $e !== $email));
+		$this->writeData('subscribers', $filtered);
+		return ['success' => true, 'message' => 'Désabonnement effectué'];
+	}
+
+	// ─── Email history ────────────────────────────────────────────────────────
+
+	private function getEmailHistory(): array {
+		return (array) $this->readData('email_history', []);
+	}
+
+	private function saveEmailRecord(string $subject, int $count, string $html): void {
+		$history = $this->getEmailHistory();
+		array_unshift($history, [
+			'ts'      => time(),
+			'subject' => $subject,
+			'count'   => $count,
+			'html'    => $html,
+		]);
+		// Keep last 90 records
+		if (count($history) > 90) {
+			$history = array_slice($history, 0, 90);
+		}
+		$this->writeData('email_history', $history);
+	}
+
+	// ─── Entry fetching ───────────────────────────────────────────────────────
+
 	/**
 	 * Fetch unread entries based on filter context (all / category / feed)
 	 * @return array<int, array{id:string, title:string, content:string, link:string, date:int, feed:string}>
 	 */
-	private function fetchUnreadEntries(string $get): array {
+	private function fetchUnreadEntries(string $get, bool $excludeEmailed = false): array {
 		$entryDAO = FreshRSS_Factory::createEntryDao();
 		$maxArticles = (int) $this->cfg('max_articles', 50);
 		$maxChars = (int) $this->cfg('max_chars', 2000);
@@ -248,16 +368,22 @@ Articles:
 			$type = 's';
 		}
 
+		$emailedSet = $excludeEmailed ? array_flip($this->getEmailedIds()) : [];
+
 		$entries = [];
 		$traversable = $entryDAO->listWhere(
 			type: $type,
 			id: $id,
 			state: FreshRSS_Entry::STATE_NOT_READ,
-			limit: $maxArticles,
+			limit: $maxArticles * 3, // fetch more to compensate for filtered-out articles
 		);
 
 		foreach ($traversable as $entry) {
 			/** @var FreshRSS_Entry $entry */
+			if ($excludeEmailed && isset($emailedSet[(string) $entry->id()])) {
+				continue;
+			}
+
 			$content = strip_tags($entry->content(false));
 			$content = preg_replace('/\s+/', ' ', $content);
 			$content = mb_substr(trim($content), 0, $maxChars, 'UTF-8');
@@ -273,13 +399,15 @@ Articles:
 			}
 
 			$entries[] = [
-				'id' => $entry->id(),
-				'title' => $entry->title(),
+				'id'      => $entry->id(),
+				'title'   => $entry->title(),
 				'content' => $content,
-				'link' => htmlspecialchars_decode($entry->link(), ENT_QUOTES),
-				'date' => $entry->date(),
-				'feed' => $feedName,
+				'link'    => htmlspecialchars_decode($entry->link(), ENT_QUOTES),
+				'date'    => $entry->date(),
+				'feed'    => $feedName,
 			];
+
+			if (count($entries) >= $maxArticles) break;
 		}
 
 		return $entries;
@@ -473,25 +601,45 @@ Articles:
 		}
 
 		try {
-			$result = $this->generateSummary($get);
+			$result = $this->generateSummary($get, excludeEmailed: true);
 			if (!$result['success']) {
 				return $result;
 			}
 
-		$summary  = $result['summary'];
-		$count    = $result['count'];
-		$articles = $result['articles'] ?? [];
+			$summary  = $result['summary'];
+			$count    = $result['count'];
+			$articles = $result['articles'] ?? [];
 
-		$htmlBody = $this->buildEmailHtml($summary, $count, $articles);
+			$subject  = 'Newsletter AI — ' . $this->localizedDate();
+			$htmlBody = $this->buildEmailHtml($summary, $count, $articles);
 
-			$sent = $this->sendEmail(
-				$emailTo,
-				'Digest IA - ' . date('d/m/Y'),
-				$htmlBody
-			);
+			// Collect all recipients: configured address + subscribers
+			$recipients = array_unique(array_filter(
+				array_merge([$emailTo], $this->getSubscribers())
+			));
 
-			if ($sent) {
-				return ['success' => true, 'message' => 'Email envoyé à ' . $emailTo];
+			$sentCount = 0;
+			$errors    = [];
+			foreach ($recipients as $recipient) {
+				// Personalise unsubscribe link per recipient
+				$body = $this->injectUnsubscribeLink($htmlBody, $recipient);
+				try {
+					if ($this->sendEmail($recipient, $subject, $body)) {
+						$sentCount++;
+					}
+				} catch (Exception $ex) {
+					$errors[] = $recipient . ': ' . $ex->getMessage();
+				}
+			}
+
+			if ($sentCount > 0) {
+				// Mark articles so they are excluded from future email reports
+				$this->markArticlesAsEmailed($result['article_ids'] ?? []);
+				// Save to history for Newsletter sidebar
+				$this->saveEmailRecord($subject, $count, $htmlBody);
+				$msg = 'Email envoyé à ' . $sentCount . ' destinataire(s)';
+				if ($errors) $msg .= ' (' . implode('; ', $errors) . ')';
+				return ['success' => true, 'message' => $msg];
 			}
 			return ['success' => false, 'error' => 'Échec de l\'envoi de l\'email'];
 		} catch (Exception $e) {
@@ -696,6 +844,13 @@ Articles:
 		return $fmt;
 	}
 
+	/** Replace {{UNSUBSCRIBE_URL}} placeholder with a real per-recipient link. */
+	private function injectUnsubscribeLink(string $html, string $email): string {
+		// Build a simple unsubscribe URL pointing back to FreshRSS
+		$url = '/i/?aiDigestAction=unsubscribe&email=' . urlencode($email);
+		return str_replace('{{UNSUBSCRIBE_URL}}', htmlspecialchars($url, ENT_QUOTES, 'UTF-8'), $html);
+	}
+
 	private function buildEmailHtml(string $summary, int $count, array $articles = []): string {
 		$html = $this->markdownToEmailHtml($summary);
 		$date = $this->localizedDate();
@@ -765,7 +920,8 @@ Articles:
   </div>
   {$sourcesHtml}
   <div class="footer">
-    Généré par FreshRSS AI Digest &bull; {$date}
+    Généré par Newsletter AI &bull; {$date}
+    &bull; <a href="{{UNSUBSCRIBE_URL}}" style="color:#a0aec0">Se désabonner</a>
   </div>
 </div>
 </body>
@@ -787,7 +943,7 @@ HTML;
 			'MIME-Version: 1.0',
 			'Content-Type: text/html; charset=UTF-8',
 			'From: ' . $emailFromName . ' <' . $emailFrom . '>',
-			'X-Mailer: FreshRSS AI Digest',
+			'X-Mailer: FreshRSS Newsletter AI',
 		];
 
 		return mail($to, $subject, $htmlBody, implode("\r\n", $headers));
@@ -893,7 +1049,7 @@ HTML;
 			'Subject: =?UTF-8?B?' . base64_encode($subject) . '?=',
 			'Message-ID: ' . $messageId,
 			'Date: ' . date('r'),
-			'X-Mailer: FreshRSS AI Digest',
+			'X-Mailer: FreshRSS Newsletter AI',
 			'',
 			'--' . $boundary,
 			'Content-Type: text/plain; charset=UTF-8',
@@ -966,9 +1122,9 @@ HTML;
 			$config = $this->getSystemConfiguration();
 			$config['email_last_sent'] = time();
 			$this->setSystemConfiguration($config);
-			Minz_Log::notice('AIDigest: rapport email envoyé automatiquement.');
+			Minz_Log::notice('NewsletterAI: rapport email envoyé automatiquement.');
 		} else {
-			Minz_Log::error('AIDigest: échec du rapport email automatique — ' . ($result['error'] ?? '?'));
+			Minz_Log::error('NewsletterAI: échec du rapport email automatique — ' . ($result['error'] ?? '?'));
 		}
 	}
 }

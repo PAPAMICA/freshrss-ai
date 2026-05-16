@@ -1,8 +1,8 @@
 {
-	"name": "AI Digest",
+	"name": "Newsletter AI",
 	"author": "Mickael Asseline",
 	"description": "Résumé intelligent des articles non lus via IA (OpenAI, Anthropic, Mistral, Ollama, etc..)",
 	"version": "1.0.0",
-	"entrypoint": "AIDigest",
+	"entrypoint": "NewsletterAI",
 	"type": "system"
 }

@@ -1,5 +1,5 @@
 <?php
-/** @var AIDigestExtension $this */
+/** @var NewsletterAIExtension $this */
 $config = $this->getSystemConfiguration();
 $cfg = function(string $key, mixed $default = '') use ($config): mixed {
 	return $config[$key] ?? $default;
@@ -225,7 +225,7 @@ if (Minz_Request::paramBoolean('ajax')) {
 <div class="aid-cols-2">
 	<div class="aid-field">
 		<label for="aid-email-name">Nom expéditeur</label>
-		<input type="text" id="aid-email-name" name="email_from_name" value="<?= htmlspecialchars((string)$cfg('email_from_name', 'FreshRSS AI Digest')) ?>">
+		<input type="text" id="aid-email-name" name="email_from_name" value="<?= htmlspecialchars((string)$cfg('email_from_name', 'Newsletter AI')) ?>">
 	</div>
 	<div class="aid-field">
 		<label for="aid-schedule">Fréquence d'envoi</label>

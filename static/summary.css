@@ -1,5 +1,5 @@
 /* ═══════════════════════════════════════════════════════════════
-   AI Digest Extension — FreshRSS
+   Newsletter AI Extension — FreshRSS
    Modern, theme-adaptive UI
    ═══════════════════════════════════════════════════════════════ */
 
@@ -808,6 +808,181 @@ body.aid-modal-open {
 
 @media (max-width: 520px) {
 	.aid-cols-2, .aid-cols-3 { grid-template-columns: 1fr }
+}
+
+/* ─── Emailed article icon ──────────────────────────────────────────── */
+
+.aid-emailed-icon {
+	display: inline-block;
+	width: 13px;
+	height: 13px;
+	vertical-align: middle;
+	margin-left: 5px;
+	opacity: .55;
+	color: var(--color-accent, #0060df);
+	flex-shrink: 0;
+}
+
+/* ─── Newsletter sidebar section ─────────────────────────────────────── */
+
+.aid-newsletter-section {
+	border-top: 1px solid var(--color-border, #ddd);
+	margin-bottom: 0 !important;
+}
+
+.aid-newsletter-title {
+	display: flex;
+	align-items: center;
+	gap: 6px;
+	cursor: pointer;
+}
+
+.aid-nl-icon svg {
+	width: 14px;
+	height: 14px;
+	vertical-align: middle;
+	opacity: .7;
+}
+
+.aid-nl-badge {
+	margin-left: auto;
+	background: var(--color-accent, #0060df);
+	color: #fff;
+	border-radius: 10px;
+	padding: 1px 7px;
+	font-size: 11px;
+	font-weight: 700;
+}
+
+.aid-newsletter-list {
+	display: none;
+}
+
+.aid-newsletter-open .aid-newsletter-list {
+	display: block;
+}
+
+.aid-newsletter-item .aid-newsletter-link {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	padding: 5px 8px 5px 24px;
+	font-size: 12px;
+	line-height: 1.3;
+	color: var(--color-text, #333);
+	text-decoration: none;
+}
+
+.aid-newsletter-item .aid-newsletter-link:hover {
+	background: var(--color-background-alt, #f0f0f0);
+}
+
+.aid-nl-count {
+	font-size: 10px;
+	opacity: .6;
+}
+
+/* ─── Newsletter subscription form ─────────────────────────────────── */
+
+.aid-subscribe-details {
+	padding: 4px 8px 8px;
+	border-top: 1px solid var(--color-border, #ddd);
+	margin-top: 4px;
+}
+
+.aid-subscribe-toggle {
+	font-size: 11px;
+	font-weight: 600;
+	color: var(--color-accent, #0060df);
+	cursor: pointer;
+	padding: 4px 0;
+	list-style: none;
+}
+
+.aid-subscribe-toggle::-webkit-details-marker { display: none; }
+
+.aid-subscribe-body {
+	display: flex;
+	align-items: center;
+	gap: 5px;
+	margin-top: 6px;
+	flex-wrap: wrap;
+}
+
+.aid-subscribe-input {
+	flex: 1;
+	min-width: 0;
+	font-size: 12px;
+	padding: 4px 7px;
+	border: 1px solid var(--color-border, #ccc);
+	border-radius: 4px;
+	background: var(--color-background, #fff);
+	color: var(--color-text, #333);
+}
+
+.aid-subscribe-btn {
+	font-size: 11px;
+	padding: 4px 10px;
+	white-space: nowrap;
+}
+
+.aid-subscribe-status {
+	font-size: 11px;
+	width: 100%;
+}
+
+.aid-subscribe-status.ok  { color: #16a34a }
+.aid-subscribe-status.err { color: #dc2626 }
+
+/* ─── Newsletter email viewer overlay ───────────────────────────────── */
+
+.aid-nl-overlay {
+	position: fixed;
+	inset: 0;
+	background: rgba(0, 0, 0, .65);
+	z-index: 10000;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.aid-nl-viewer {
+	position: relative;
+	width: 92%;
+	max-width: 900px;
+	height: 88vh;
+	background: #fff;
+	border-radius: 10px;
+	overflow: hidden;
+	display: flex;
+	flex-direction: column;
+	box-shadow: 0 8px 40px rgba(0,0,0,.35);
+}
+
+.aid-nl-close {
+	position: absolute;
+	top: 10px;
+	right: 12px;
+	z-index: 2;
+	background: rgba(0,0,0,.15);
+	border: none;
+	border-radius: 50%;
+	width: 28px;
+	height: 28px;
+	font-size: 14px;
+	cursor: pointer;
+	color: #333;
+	line-height: 1;
+}
+
+.aid-nl-close:hover {
+	background: rgba(0,0,0,.3);
+}
+
+.aid-nl-frame {
+	flex: 1;
+	border: none;
+	width: 100%;
 }
 
 /* ════════════════════════════════════════════════════════════════════

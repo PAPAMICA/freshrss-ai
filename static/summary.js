@@ -429,6 +429,9 @@
 			return;
 		}
 
+		// Only inject fallback button if user is authenticated (marker present)
+		if (!document.getElementById('aid-auth-marker')) return;
+
 		// Fallback: inject button via JS if PHP hook didn't fire (e.g. different theme)
 		var selectors = ['#nav_menu', '.nav_menu', '#sidebar .panel', '.toolbar', '#toolbar', 'header nav', '.flux_header'];
 		var container = null;
@@ -647,6 +650,180 @@
 		}
 	}
 
+	// ─── Emailed articles tracking ────────────────────────────────────────────
+
+	var emailedIds = new Set();
+
+	function loadEmailedIds() {
+		fetch(buildUrl('emailedIds'))
+			.then(function(r) { return r.json(); })
+			.then(function(data) {
+				if (Array.isArray(data.ids)) {
+					data.ids.forEach(function(id) { emailedIds.add(String(id)); });
+					decorateEmailedArticles();
+				}
+			})
+			.catch(function() {});
+	}
+
+	var EMAILED_SVG = '<svg class="aid-emailed-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" title="Envoyé par email"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>';
+
+	function decorateArticleEl(el) {
+		var id = el.getAttribute('data-id') || el.getAttribute('id') || '';
+		// FreshRSS sets id like "current_1778894110768558" or uses data-id
+		id = id.replace(/^[^0-9]*/, '');
+		if (!id || !emailedIds.has(id)) return;
+		if (el.querySelector('.aid-emailed-icon')) return; // already decorated
+
+		// Insert icon after the read/unread toggle (first <a> or first child)
+		var target = el.querySelector('.read') || el.querySelector('.flux_header') || el.firstElementChild;
+		if (target) {
+			var span = document.createElement('span');
+			span.innerHTML = EMAILED_SVG;
+			target.appendChild(span.firstElementChild);
+		}
+	}
+
+	function decorateEmailedArticles() {
+		document.querySelectorAll('.flux[data-id], .flux[id]').forEach(decorateArticleEl);
+	}
+
+	// ─── Newsletter sidebar section ───────────────────────────────────────────
+
+	var newsletterHistory = [];
+
+	function loadNewsletterHistory() {
+		fetch(buildUrl('emailHistory'))
+			.then(function(r) { return r.json(); })
+			.then(function(data) {
+				if (!Array.isArray(data.history)) return;
+				newsletterHistory = data.history;
+				injectNewsletterSidebar();
+			})
+			.catch(function() {});
+	}
+
+	function injectNewsletterSidebar() {
+		if (!newsletterHistory.length) return;
+		if (document.getElementById('aid-newsletter-section')) return;
+
+		var sidebar = document.getElementById('aside_feed') || document.getElementById('aside');
+		if (!sidebar) return;
+
+		// Build section mimicking FreshRSS category structure
+		var section = document.createElement('section');
+		section.className = 'category aid-newsletter-section';
+		section.id = 'aid-newsletter-section';
+
+		var unreadCount = newsletterHistory.length;
+		section.innerHTML = [
+			'<p class="category-title">',
+			'  <a class="title aid-newsletter-title" href="#" title="Digest envoyés par email">',
+			'    <span class="aid-nl-icon">' + EMAILED_SVG + '</span>',
+			'    Newsletter IA',
+			'    <span class="unread aid-nl-badge">' + unreadCount + '</span>',
+			'  </a>',
+			'</p>',
+			'<ul class="feeds aid-newsletter-list">',
+			newsletterHistory.map(function(rec, idx) {
+				var d = new Date(rec.ts * 1000);
+				var label = d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+				return '<li class="feed aid-newsletter-item" data-idx="' + idx + '">'
+					+ '<a href="#" class="aid-newsletter-link">'
+					+ '<span class="aid-nl-count">' + rec.count + ' articles</span>'
+					+ label
+					+ '</a></li>';
+			}).join(''),
+			'</ul>',
+		].join('\n');
+
+		// Insert before favorites section, or prepend to sidebar
+		var favorites = sidebar.querySelector('#nav_sidebar_favorites, .category_favorites, [id*="favorite"]');
+		if (favorites) {
+			sidebar.insertBefore(section, favorites);
+		} else {
+			sidebar.insertBefore(section, sidebar.firstChild);
+		}
+
+		// Subscription form (append at bottom of section)
+		var subForm = document.createElement('div');
+		subForm.className = 'aid-subscribe-form';
+		subForm.innerHTML = [
+			'<details class="aid-subscribe-details">',
+			'  <summary class="aid-subscribe-toggle">S\'abonner à la newsletter</summary>',
+			'  <div class="aid-subscribe-body">',
+			'    <input type="email" class="aid-subscribe-input" placeholder="votre@email.com">',
+			'    <button class="aid-subscribe-btn btn">S\'abonner</button>',
+			'    <span class="aid-subscribe-status"></span>',
+			'  </div>',
+			'</details>',
+		].join('');
+		section.appendChild(subForm);
+
+		subForm.querySelector('.aid-subscribe-btn').addEventListener('click', function() {
+			var input  = subForm.querySelector('.aid-subscribe-input');
+			var status = subForm.querySelector('.aid-subscribe-status');
+			var email  = input.value.trim();
+			if (!email) return;
+			this.disabled = true;
+			status.textContent = '…';
+			fetch(buildUrl('subscribe', { email: email }))
+				.then(function(r) { return r.json(); })
+				.then(function(data) {
+					status.textContent = data.message || data.error || '';
+					status.className   = 'aid-subscribe-status ' + (data.success ? 'ok' : 'err');
+					if (data.success) input.value = '';
+				})
+				.catch(function() { status.textContent = 'Erreur réseau'; status.className = 'aid-subscribe-status err'; })
+				.finally(function() { subForm.querySelector('.aid-subscribe-btn').disabled = false; });
+		});
+
+		// Click handlers
+		section.querySelector('.aid-newsletter-title').addEventListener('click', function(e) {
+			e.preventDefault();
+			section.classList.toggle('aid-newsletter-open');
+		});
+
+		section.querySelectorAll('.aid-newsletter-link').forEach(function(link) {
+			link.addEventListener('click', function(e) {
+				e.preventDefault();
+				var idx = parseInt(this.closest('.aid-newsletter-item').getAttribute('data-idx'), 10);
+				openNewsletterEmail(idx);
+			});
+		});
+	}
+
+	function openNewsletterEmail(idx) {
+		fetch(buildUrl('emailContent', { idx: idx }))
+			.then(function(r) { return r.json(); })
+			.then(function(data) {
+				if (!data.html) return;
+				// Show in a fullscreen iframe overlay
+				var overlay = document.createElement('div');
+				overlay.className = 'aid-nl-overlay';
+				overlay.innerHTML = [
+					'<div class="aid-nl-viewer">',
+					'  <button class="aid-nl-close" title="Fermer">&#x2715;</button>',
+					'  <iframe class="aid-nl-frame" sandbox="allow-same-origin"></iframe>',
+					'</div>',
+				].join('');
+				document.body.appendChild(overlay);
+
+				var frame = overlay.querySelector('iframe');
+				frame.contentDocument.open();
+				frame.contentDocument.write(data.html);
+				frame.contentDocument.close();
+
+				overlay.querySelector('.aid-nl-close').addEventListener('click', function() {
+					overlay.remove();
+				});
+				overlay.addEventListener('click', function(e) {
+					if (e.target === overlay) overlay.remove();
+				});
+			})
+			.catch(function() {});
+	}
+
 	// ─── Init ─────────────────────────────────────────────────────────────────
 
 	function init() {
@@ -655,23 +832,33 @@
 				wireOrInjectButton();
 				createModal();
 				initConfigPage();
+				loadEmailedIds();
+				loadNewsletterHistory();
 			});
 		} else {
 			wireOrInjectButton();
 			createModal();
 			initConfigPage();
+			loadEmailedIds();
+			loadNewsletterHistory();
 		}
 
 		// Watch for configure page being loaded via FreshRSS AJAX
+		// and for new articles being added to the list
 		var observer = new MutationObserver(function(mutations) {
+			var shouldDecorate = false;
 			for (var i = 0; i < mutations.length; i++) {
 				var nodes = mutations[i].addedNodes;
 				for (var j = 0; j < nodes.length; j++) {
 					if (nodes[j].nodeType === 1) {
 						initConfigPage(nodes[j].ownerDocument);
+						if (nodes[j].classList && (nodes[j].classList.contains('flux') || nodes[j].querySelector && nodes[j].querySelector('.flux'))) {
+							shouldDecorate = true;
+						}
 					}
 				}
 			}
+			if (shouldDecorate) decorateEmailedArticles();
 		});
 		observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
 	}
