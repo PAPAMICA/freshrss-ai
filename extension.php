@@ -134,6 +134,9 @@ Articles:
 		case 'subscribers':
 			echo json_encode(['subscribers' => $this->getSubscribers()], JSON_UNESCAPED_UNICODE);
 			break;
+		case 'subscribersFull':
+			echo json_encode(['subscribers' => $this->getSubscribersFull()], JSON_UNESCAPED_UNICODE);
+			break;
 		case 'emailedIds':
 			echo json_encode(['ids' => $this->getEmailedIds()], JSON_UNESCAPED_UNICODE);
 			break;
@@ -334,8 +337,42 @@ Articles:
 
 	// ─── Subscribers ──────────────────────────────────────────────────────────
 
+	/**
+	 * Returns a flat array of subscriber emails (used for sending).
+	 * Migrates old plain-string format transparently.
+	 */
 	private function getSubscribers(): array {
-		return (array) $this->readData('subscribers', []);
+		$raw = (array) $this->readData('subscribers', []);
+		return array_values(array_map(
+			fn($e) => is_array($e) ? (string)($e['email'] ?? '') : (string)$e,
+			$raw
+		));
+	}
+
+	/**
+	 * Returns subscribers with metadata: email, ts (subscription timestamp), sent_count.
+	 */
+	private function getSubscribersFull(): array {
+		$raw     = (array) $this->readData('subscribers', []);
+		$history = $this->getEmailHistory();
+
+		return array_values(array_map(function($e) use ($history) {
+			if (is_array($e)) {
+				$email = (string)($e['email'] ?? '');
+				$ts    = (int)($e['ts'] ?? 0);
+			} else {
+				$email = (string)$e;
+				$ts    = 0;
+			}
+			// Count newsletters sent to this address
+			$sent = array_reduce($history, function($carry, $rec) use ($email) {
+				if (isset($rec['recipients']) && in_array($email, (array)$rec['recipients'], true)) {
+					return $carry + 1;
+				}
+				return $carry;
+			}, 0);
+			return ['email' => $email, 'ts' => $ts, 'sent_count' => $sent];
+		}, $raw));
 	}
 
 	private function addSubscriber(string $email): array {
@@ -343,18 +380,25 @@ Articles:
 		if (!$email) {
 			return ['success' => false, 'error' => 'Adresse email invalide'];
 		}
-		$list = $this->getSubscribers();
-		if (in_array($email, $list, true)) {
-			return ['success' => false, 'error' => 'Cette adresse est déjà abonnée'];
+		$raw = (array) $this->readData('subscribers', []);
+		// Check duplicates (handle both old string and new object formats)
+		foreach ($raw as $e) {
+			$stored = is_array($e) ? ($e['email'] ?? '') : $e;
+			if ($stored === $email) {
+				return ['success' => false, 'error' => 'Cette adresse est déjà abonnée'];
+			}
 		}
-		$list[] = $email;
-		$this->writeData('subscribers', $list);
+		$raw[] = ['email' => $email, 'ts' => time()];
+		$this->writeData('subscribers', $raw);
 		return ['success' => true, 'message' => $email . ' abonné(e) avec succès'];
 	}
 
 	private function removeSubscriber(string $email): array {
-		$list    = $this->getSubscribers();
-		$filtered = array_values(array_filter($list, fn($e) => $e !== $email));
+		$raw      = (array) $this->readData('subscribers', []);
+		$filtered = array_values(array_filter($raw, function($e) use ($email) {
+			$stored = is_array($e) ? ($e['email'] ?? '') : $e;
+			return $stored !== $email;
+		}));
 		$this->writeData('subscribers', $filtered);
 		return ['success' => true, 'message' => 'Désabonnement effectué'];
 	}

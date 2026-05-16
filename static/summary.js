@@ -624,8 +624,8 @@
 			});
 		}
 
-		// ── Newsletter history on configure page ──────────────────────────
-		populateConfigHistory();
+		// ── Subscribers list on configure page ────────────────────────────
+		initSubscribersList();
 
 		// ── Test email ─────────────────────────────────────────────────────
 		var testEmailBtn    = gid('aid-test-email');
@@ -791,8 +791,14 @@
 		}
 	}
 
+	function isConfigurePage() {
+		return /[?&]c=(configure|extension|auth|user)(&|$)/.test(window.location.search)
+			|| !!document.getElementById('aid-cfg');
+	}
+
 	function tryInjectNewsletterSidebar() {
 		if (!historyLoaded) return;
+		if (isConfigurePage()) return;
 		if (document.getElementById('aid-newsletter-section')) return;
 		var inserted = injectNewsletterSidebar();
 		// Retry up to 10× with increasing delay if sidebar not in DOM yet
@@ -925,48 +931,71 @@
 
 	// ─── Configure page newsletter history ────────────────────────────────────
 
-	function populateConfigHistory() {
-		var container = document.getElementById('aid-nl-history-list');
+	function initSubscribersList() {
+		var container = document.getElementById('aid-subscribers-list');
 		if (!container) return;
 
-		if (!newsletterHistory.length) {
-			container.innerHTML = '<p class="aid-hint">Aucun digest envoyé pour l\'instant.</p>';
-			return;
+		function renderSubscribers(subs) {
+			if (!subs || subs.length === 0) {
+				container.innerHTML = '<p class="aid-hint">Aucun abonné pour l\'instant.</p>';
+				return;
+			}
+
+			var rows = subs.map(function(sub) {
+				var date = sub.ts ? new Date(sub.ts * 1000).toLocaleDateString('fr-FR', { day: 'numeric', month: 'long', year: 'numeric' }) : '—';
+				return '<tr>'
+					+ '<td class="aid-sub-email">' + escapeHtml(sub.email) + '</td>'
+					+ '<td class="aid-sub-date">' + date + '</td>'
+					+ '<td class="aid-sub-count">' + (sub.sent_count || 0) + '</td>'
+					+ '<td class="aid-sub-actions">'
+					+ '<button class="btn aid-sub-delete" data-email="' + escapeHtml(sub.email) + '">Supprimer</button>'
+					+ '</td>'
+					+ '</tr>';
+			}).join('');
+
+			container.innerHTML = '<table class="aid-subscribers-table">'
+				+ '<thead><tr>'
+				+ '<th>Email</th>'
+				+ '<th>Abonné depuis</th>'
+				+ '<th>Newsletters reçues</th>'
+				+ '<th></th>'
+				+ '</tr></thead>'
+				+ '<tbody>' + rows + '</tbody>'
+				+ '</table>';
+
+			container.querySelectorAll('.aid-sub-delete').forEach(function(btn) {
+				btn.addEventListener('click', function() {
+					var email = btn.getAttribute('data-email');
+					if (!confirm('Supprimer l\'abonné « ' + email + ' » ?')) return;
+					btn.disabled = true;
+					fetch(buildUrl('unsubscribe', { email: email }))
+						.then(function(r) { return r.json(); })
+						.then(function(data) {
+							if (data.success) {
+								var row = btn.closest('tr');
+								row.style.transition = 'opacity .3s';
+								row.style.opacity = '0';
+								setTimeout(function() {
+									row.remove();
+									if (!container.querySelector('tbody tr')) {
+										container.innerHTML = '<p class="aid-hint">Aucun abonné pour l\'instant.</p>';
+									}
+								}, 300);
+							} else {
+								btn.disabled = false;
+							}
+						})
+						.catch(function() { btn.disabled = false; });
+				});
+			});
 		}
 
-		container.innerHTML = '';
-		newsletterHistory.forEach(function(rec, idx) {
-			var d = new Date(rec.ts * 1000);
-			var dateStr = d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
-
-			var item = document.createElement('div');
-			item.className = 'flux not_read aid-digest-flux';
-			item.setAttribute('data-idx', idx);
-
-			item.innerHTML = [
-				'<ul class="horizontal-list flux_header">',
-				'  <li class="item website full">',
-				'    <span class="item-element aid-digest-source">',
-				'      <span class="aid-nl-favicon">' + EMAILED_SVG + '</span>',
-				'      <span class="websiteName">Newsletter IA</span>',
-				'    </span>',
-				'  </li>',
-				'  <li class="item titleAuthorSummaryDate">',
-				'    <span class="item-element title aid-digest-title">Digest du ' + escapeHtml(dateStr) + '</span>',
-				'    <span class="item-element date">' + rec.count + ' article' + (rec.count > 1 ? 's' : '') + '</span>',
-				'  </li>',
-				'  <li class="item link">',
-				'    <button class="btn aid-digest-view-btn" data-idx="' + idx + '" title="Voir le digest">Voir</button>',
-				'  </li>',
-				'</ul>',
-			].join('\n');
-
-			item.querySelector('.aid-digest-view-btn').addEventListener('click', function() {
-				openNewsletterEmail(idx);
+		fetch(buildUrl('subscribersFull'))
+			.then(function(r) { return r.json(); })
+			.then(function(data) { renderSubscribers(data.subscribers || []); })
+			.catch(function() {
+				container.innerHTML = '<p class="aid-hint">Erreur lors du chargement des abonnés.</p>';
 			});
-
-			container.appendChild(item);
-		});
 	}
 
 	function openNewsletterEmail(idx) {

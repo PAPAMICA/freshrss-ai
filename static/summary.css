@@ -998,73 +998,72 @@ body.aid-modal-open {
 
 /* ─── Configure page newsletter history list ────────────────────────── */
 
-.aid-nl-history-container {
+/* ─── Subscribers table (configure page) ────────────────────────────── */
+
+.aid-subscribers-table {
+	width: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
 	margin-top: .5em;
 }
 
-.aid-digest-flux {
-	border: 1px solid var(--color-border, #ddd);
-	border-radius: 4px;
-	margin-bottom: 6px;
-	background: var(--color-background, #fff);
-	transition: border-color 0.15s;
-}
-
-.aid-digest-flux:hover {
-	border-color: var(--color-accent, #0060df);
-}
-
-.aid-digest-flux .flux_header {
-	display: flex;
-	align-items: center;
-	padding: 8px 10px;
-	gap: 0;
-	list-style: none;
-	margin: 0;
-}
-
-.aid-digest-source {
-	display: flex;
-	align-items: center;
-	gap: 5px;
-	font-size: 12px;
-	font-weight: 600;
-	color: var(--color-secondary, #666);
-	white-space: nowrap;
-	min-width: 120px;
-}
-
-.aid-digest-source .websiteName {
-	font-size: 12px;
-}
-
-.aid-digest-title {
-	font-size: 13px;
-	font-weight: 600;
-	color: var(--color-title, inherit);
-	flex: 1;
-}
-
-.aid-digest-flux .item.titleAuthorSummaryDate {
-	flex: 1;
-	display: flex;
-	align-items: center;
-	gap: 12px;
-}
-
-.aid-digest-flux .item.titleAuthorSummaryDate .date {
+.aid-subscribers-table th {
+	text-align: left;
+	padding: 8px 12px;
 	font-size: 11px;
-	color: var(--color-secondary, #888);
+	font-weight: 700;
+	text-transform: uppercase;
+	letter-spacing: .04em;
+	color: var(--color-secondary, #718096);
+	border-bottom: 2px solid var(--color-border, #e2e8f0);
+	background: var(--color-background-alt, #f7fafc);
+}
+
+.aid-subscribers-table td {
+	padding: 9px 12px;
+	border-bottom: 1px solid var(--color-border, #e2e8f0);
+	vertical-align: middle;
+}
+
+.aid-subscribers-table tbody tr:last-child td {
+	border-bottom: none;
+}
+
+.aid-subscribers-table tbody tr:hover td {
+	background: var(--color-background-alt, #f7fafc);
+}
+
+.aid-sub-email {
+	font-weight: 500;
+	color: var(--color-title, inherit);
+}
+
+.aid-sub-date,
+.aid-sub-count {
+	color: var(--color-secondary, #718096);
 	white-space: nowrap;
 }
 
-.aid-digest-flux .item.link {
-	padding-left: 8px;
+.aid-sub-count {
+	text-align: center;
 }
 
-.aid-digest-view-btn {
+.aid-sub-actions {
+	text-align: right;
+	white-space: nowrap;
+}
+
+.aid-sub-delete {
 	font-size: 12px;
 	padding: 3px 10px;
+	color: #c53030;
+	border-color: #fed7d7;
+	background: #fff5f5;
+}
+
+.aid-sub-delete:hover {
+	background: #fed7d7;
+	border-color: #fc8181;
 }
 
 /* ─── Newsletter article in main stream ──────────────────────────────── */
