@@ -1005,9 +1005,11 @@ function updateNewsletterSidebarList(section) {
 	function setStreamNativeVisible(visible) {
 		var stream = document.getElementById('stream');
 		if (!stream) return;
-		// Masque/affiche les éléments natifs FreshRSS (articles, prompts) mais pas les nôtres
-		stream.querySelectorAll('.flux:not(.aid-newsletter-flux), .prompt, #new-article').forEach(function(el) {
-			el.style.display = visible ? '' : 'none';
+		// Cache/restaure TOUS les enfants directs de #stream qui ne sont pas les nôtres
+		Array.from(stream.children).forEach(function(el) {
+			if (!el.classList.contains('aid-newsletter-flux')) {
+				el.style.display = visible ? '' : 'none';
+			}
 		});
 	}
 
@@ -1048,7 +1050,7 @@ function updateNewsletterSidebarList(section) {
 			return;
 		}
 
-		// Afficher chaque newsletter comme un faux article flux (du plus récent au plus ancien)
+		// Afficher chaque newsletter comme un article expandable (comme les articles RSS natifs)
 		var readSet = getReadNewsletterTs();
 		var fragment = document.createDocumentFragment();
 		newsletterHistory.forEach(function(rec, idx) {
@@ -1081,20 +1083,25 @@ function updateNewsletterSidebarList(section) {
 				'    </button>',
 				'  </li>',
 				'</ul>',
+				'<article class="flux_content aid-nl-content" style="display:none">',
+				'  <div class="content content_large">',
+				'    <div class="aid-nl-stream-body"></div>',
+				'  </div>',
+				'</article>',
 			].join('\n');
 
-			// Bouton "marquer comme lu" — stoppe la propagation pour ne pas ouvrir la newsletter
+			// Bouton "marquer comme lu" — stoppe la propagation
 			fluxEl.querySelector('.aid-nl-mark-read-btn').addEventListener('click', function(e) {
 				e.stopPropagation();
 				e.preventDefault();
 				markNewsletterRead(rec.ts);
 			});
 
-			// stopPropagation pour bloquer le handler natif FreshRSS sur #stream (toggleContent)
+			// Clic sur l'item = expand/collapse inline (comme un article RSS)
 			fluxEl.addEventListener('click', function(e) {
 				e.stopPropagation();
 				e.preventDefault();
-				openNewsletterEmail(idx);
+				toggleNewsletterItem(fluxEl, idx, rec.ts);
 			});
 
 			fragment.appendChild(fluxEl);
@@ -1102,6 +1109,66 @@ function updateNewsletterSidebarList(section) {
 
 		stream.insertBefore(fragment, stream.firstChild);
 		stream.scrollTop = 0;
+	}
+
+	function toggleNewsletterItem(fluxEl, idx, ts) {
+		var content = fluxEl.querySelector('.aid-nl-content');
+		var isOpen = fluxEl.classList.contains('active');
+
+		if (isOpen) {
+			// Fermer
+			fluxEl.classList.remove('active', 'current');
+			content.style.display = 'none';
+		} else {
+			// Fermer tout autre item ouvert
+			document.querySelectorAll('.aid-newsletter-list-item.active').forEach(function(el) {
+				el.classList.remove('active', 'current');
+				var c = el.querySelector('.aid-nl-content');
+				if (c) c.style.display = 'none';
+			});
+
+			// Ouvrir
+			fluxEl.classList.add('active', 'current');
+			content.style.display = '';
+
+			// Marquer comme lu
+			markNewsletterRead(ts);
+
+			// Charger l'iframe si pas encore fait
+			var body = content.querySelector('.aid-nl-stream-body');
+			if (body && !body.querySelector('iframe')) {
+				var iframe = document.createElement('iframe');
+				iframe.className = 'aid-nl-stream-iframe';
+				iframe.setAttribute('sandbox', 'allow-scripts allow-popups');
+				body.appendChild(iframe);
+
+				function onHeightMsg(e) {
+					if (e.data && e.data.type === 'aid-nl-height' && e.data.h > 100) {
+						iframe.style.height = e.data.h + 'px';
+					}
+				}
+				window.addEventListener('message', onHeightMsg);
+
+				iframe.src = buildUrl('emailRender', { idx: idx });
+
+				setTimeout(function() {
+					if (parseInt(iframe.style.height, 10) < 200) {
+						iframe.style.height = '600px';
+					}
+				}, 2000);
+
+				// Nettoyage listener quand l'item est fermé à nouveau
+				fluxEl.addEventListener('click', function cleanup() {
+					if (!fluxEl.classList.contains('active')) {
+						window.removeEventListener('message', onHeightMsg);
+						fluxEl.removeEventListener('click', cleanup);
+					}
+				});
+			}
+
+			// Scroll vers l'item
+			fluxEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+		}
 	}
 
 	function openNewsletterEmail(idx) {
