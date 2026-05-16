@@ -259,9 +259,8 @@ if (Minz_Request::paramBoolean('ajax')) {
 </div>
 
 <div class="aid-box">
-<h4>Cron — envoi automatique</h4>
-<p class="aid-hint">Ajoutez cette ligne à votre crontab (<code>crontab -e</code>) :</p>
-<code class="aid-cron-code">0 <?= (int)$cfg('email_hour', 8) ?> * * * www-data php /var/www/FreshRSS/extensions/xExtension-AIDigest/cron.php &gt;&gt; /var/log/freshrss-ai-digest.log 2&gt;&amp;1</code>
+<h4>Envoi automatique</h4>
+<p class="aid-hint">L'envoi est déclenché automatiquement par FreshRSS lors de l'actualisation des flux (aucun cron supplémentaire nécessaire). Assurez-vous que l'actualisation automatique des flux est activée dans les paramètres FreshRSS.</p>
 </div>
 
 <div class="aid-actions">

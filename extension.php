@@ -57,6 +57,7 @@ Articles:
 	public function init(): void {
 		$this->registerHook('freshrss_init', [$this, 'onFreshRSSInit']);
 		$this->registerHook('nav_menu', [$this, 'renderNavButton']);
+		$this->registerHook('freshrss_user_maintenance', [$this, 'onUserMaintenance']);
 
 		Minz_View::appendStyle($this->getFileUrl('summary.css', 'css'));
 		Minz_View::appendScript($this->getFileUrl('summary.js', 'js'));
@@ -635,26 +636,42 @@ HTML;
 	// ─── Cron entrypoint ──────────────────────────────────────────────────────
 
 	/**
-	 * Called by cron.php to send the daily/weekly report.
-	 * Usage: php path/to/freshrss/extensions/xExtension-AIDigest/cron.php
+	 * Called automatically by FreshRSS during each feed refresh cycle.
+	 * Sends the email report if the configured schedule and hour match,
+	 * and no report has been sent yet during this time window.
 	 */
-	public function runCron(): void {
+	public function onUserMaintenance(): void {
 		$schedule = (string) $this->cfg('email_schedule', 'never');
-		$hour = (int) $this->cfg('email_hour', 8);
+		if ($schedule === 'never' || !(bool) $this->cfg('email_enabled', false)) {
+			return;
+		}
+
+		$targetHour  = (int) $this->cfg('email_hour', 8);
 		$currentHour = (int) date('G');
-
-		if ($schedule === 'never') {
+		if ($currentHour !== $targetHour) {
 			return;
 		}
 
-		if ($currentHour !== $hour) {
+		if ($schedule === 'weekly' && date('N') !== '1') { // lundi uniquement
 			return;
 		}
 
-		if ($schedule === 'weekly' && date('N') !== '1') { // Monday only
+		// Prevent duplicate sends: skip if already sent within this hour window
+		$lastSent = (int) $this->cfg('email_last_sent', 0);
+		$windowStart = mktime($targetHour, 0, 0);
+		if ($lastSent >= $windowStart) {
 			return;
 		}
 
-		$this->sendEmailReport('a');
+		$result = $this->sendEmailReport('a');
+
+		if ($result['success']) {
+			$config = $this->getSystemConfiguration();
+			$config['email_last_sent'] = time();
+			$this->setSystemConfiguration($config);
+			Minz_Log::notice('AIDigest: rapport email envoyé automatiquement.');
+		} else {
+			Minz_Log::error('AIDigest: échec du rapport email automatique — ' . ($result['error'] ?? '?'));
+		}
 	}
 }
