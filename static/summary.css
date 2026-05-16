@@ -810,7 +810,11 @@ body.aid-modal-open {
 	.aid-cols-2, .aid-cols-3 { grid-template-columns: 1fr }
 }
 
-/* ─── Emailed article icon ──────────────────────────────────────────── */
+/* ─── Emailed article icon (in .item.manage area) ───────────────────── */
+
+.aid-emailed-manage {
+	/* inherits li.item.manage styles from FreshRSS */
+}
 
 .aid-emailed-wrap {
 	display: inline-flex;
@@ -819,91 +823,69 @@ body.aid-modal-open {
 }
 
 .aid-emailed-icon {
-	display: inline-block;
-	width: 12px;
-	height: 12px;
-	vertical-align: middle;
-	margin: 0 3px;
-	opacity: .5;
+	width: 16px;
+	height: 16px;
+	display: block;
+	opacity: .45;
 	color: var(--color-accent, #0060df);
-	flex-shrink: 0;
 }
 
 /* ─── Newsletter sidebar section ─────────────────────────────────────── */
-/* Inherits .category styles from FreshRSS — only override what we need */
+/* li.tree-folder.category — mirrors FreshRSS native structure exactly */
 
-.aid-newsletter-section {}
-
-.aid-newsletter-title {
-	display: flex !important;
-	align-items: center !important;
-	gap: 5px !important;
-	cursor: pointer !important;
-	width: 100% !important;
-}
-
-.aid-nl-icon {
+.aid-newsletter-section .aid-nl-icon {
 	display: inline-flex;
 	align-items: center;
-	flex-shrink: 0;
+	vertical-align: middle;
+	margin-right: 4px;
 }
 
-.aid-nl-icon svg {
-	width: 13px;
-	height: 13px;
-	opacity: .75;
+.aid-newsletter-section .aid-nl-icon svg,
+.aid-newsletter-section .aid-emailed-icon {
+	width: 14px;
+	height: 14px;
+	opacity: .8;
+	vertical-align: middle;
 }
 
 .aid-nl-badge {
-	margin-left: auto;
+	display: inline-block;
 	background: var(--color-accent, #0060df);
 	color: #fff;
 	border-radius: 10px;
 	padding: 1px 7px;
 	font-size: 11px;
 	font-weight: 700;
-	flex-shrink: 0;
+	margin-left: 4px;
+	vertical-align: middle;
 }
 
-/* List is hidden until section is toggled open */
+/* List hidden by default, shown when .active (FreshRSS pattern) */
 .aid-newsletter-list {
-	display: none;
-	margin: 0;
-	padding: 0;
-	list-style: none;
+	display: none !important;
 }
 
-.aid-newsletter-open .aid-newsletter-list {
-	display: block;
+.aid-newsletter-list.active {
+	display: block !important;
 }
 
 .aid-newsletter-item .aid-newsletter-link {
-	display: flex;
-	flex-direction: column;
-	gap: 2px;
-	padding: 5px 8px 5px 28px;
+	display: block;
 	font-size: 12px;
-	line-height: 1.3;
-	color: var(--color-text, inherit);
-	text-decoration: none;
-	border-radius: 3px;
+	line-height: 1.4;
 }
 
-.aid-newsletter-item .aid-newsletter-link:hover {
-	background: var(--color-background-alt, rgba(128,128,128,.1));
+.aid-nl-count {
+	opacity: .6;
+	font-size: 11px;
 }
 
 .aid-nl-empty span {
 	display: block;
-	padding: 5px 8px 5px 28px;
+	padding: 4px 8px;
 	font-size: 11px;
 	opacity: .6;
 	font-style: italic;
-}
-
-.aid-nl-count {
-	font-size: 10px;
-	opacity: .6;
 }
 
 /* ─── Newsletter subscription form ─────────────────────────────────── */

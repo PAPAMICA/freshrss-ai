@@ -685,28 +685,36 @@
 			.catch(function() {});
 	}
 
-	var EMAILED_SVG = '<svg class="aid-emailed-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" title="Envoyé par email"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>';
+	var AI_ICON_SVG = '<svg class="aid-emailed-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" title="Résumé inclus dans un digest envoyé"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.65-4.56A2.5 2.5 0 0 1 2 12a2.5 2.5 0 0 1 2.39-2.48 2.5 2.5 0 0 1 1.65-4.56A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.65-4.56A2.5 2.5 0 0 0 22 12a2.5 2.5 0 0 0-2.39-2.48 2.5 2.5 0 0 0-1.65-4.56A2.5 2.5 0 0 0 14.5 2Z"/></svg>';
+	// Keep for sidebar section icon
+	var EMAILED_SVG = AI_ICON_SVG;
 
 	function decorateArticleEl(el) {
-		// FreshRSS uses id="flux_1234567" or data-id="1234567"
-		var raw = el.getAttribute('data-id') || el.getAttribute('id') || '';
+		// FreshRSS uses id="flux_1234567" and data-entry attribute
+		var raw = el.getAttribute('data-entry') || el.getAttribute('data-id') || el.getAttribute('id') || '';
 		var id  = raw.replace(/^[^0-9]*/, '');
 		if (!id || !emailedIds.has(id)) return;
 		if (el.querySelector('.aid-emailed-icon')) return;
 
-		// Find the best anchor point: the first action/icon area inside the item
-		var target = el.querySelector('.item_title, .flux_header, .title, a');
-		if (!target) target = el;
-		var icon = document.createElement('span');
-		icon.className = 'aid-emailed-wrap';
-		icon.innerHTML = EMAILED_SVG;
-		target.insertAdjacentElement('afterend', icon);
+		// Inject as a new <li class="item manage"> after the existing manage items (read/bookmark)
+		// FreshRSS article header: ul.horizontal-list.flux_header > li.item.manage
+		var header = el.querySelector('ul.flux_header, ul.horizontal-list');
+		if (header) {
+			var lastManage = null;
+			header.querySelectorAll('li.item.manage').forEach(function(li) { lastManage = li; });
+			var li = document.createElement('li');
+			li.className = 'item manage aid-emailed-manage';
+			li.innerHTML = '<span class="item-element aid-emailed-wrap">' + AI_ICON_SVG + '</span>';
+			if (lastManage && lastManage.nextSibling) {
+				header.insertBefore(li, lastManage.nextSibling);
+			} else if (lastManage) {
+				header.appendChild(li);
+			}
+		}
 	}
 
 	function decorateEmailedArticles() {
-		// .flux covers both list and reader views in FreshRSS
-		document.querySelectorAll('.flux, [class*="entry"], [class*="article"]').forEach(function(el) {
-			if (el.classList.contains('aid-emailed-wrap')) return;
+		document.querySelectorAll('.flux').forEach(function(el) {
 			decorateArticleEl(el);
 		});
 	}
@@ -737,24 +745,11 @@
 	}
 
 	function findSidebarContainer() {
-		// Target specifically the categories nav, NOT the whole <aside>
-		// FreshRSS puts categories inside these containers depending on version/theme
-		var cats = [
-			'#nav_sidebar_categories',   // FreshRSS ≥1.22
-			'#nav_sidebar > nav',
-			'#nav_sidebar > ul',
-			'#aside > nav',
-			'#aside_feed',
-		];
-		for (var i = 0; i < cats.length; i++) {
-			var el = document.querySelector(cats[i]);
-			if (el) return el;
-		}
-		// Fallback: find the container that holds .category sections
-		var section = document.querySelector('section.category');
-		if (section && section.parentElement) return section.parentElement;
-
-		return null;
+		// In this FreshRSS/Mapco theme, categories are li.tree-folder.category inside ul#sidebar
+		return document.getElementById('sidebar')
+			|| document.querySelector('ul.tree')
+			|| document.querySelector('#aside_feed ul')
+			|| null;
 	}
 
 	function injectNewsletterSidebar() {
@@ -763,50 +758,52 @@
 		var sidebar = findSidebarContainer();
 		if (!sidebar) return false;
 
-		// Build section mimicking FreshRSS category structure
-		var section = document.createElement('section');
-		section.className = 'category aid-newsletter-section';
+		// Build a li.tree-folder.category matching FreshRSS's native structure
+		var section = document.createElement('li');
+		section.className = 'tree-folder category aid-newsletter-section';
 		section.id = 'aid-newsletter-section';
 
 		var listItems = newsletterHistory.length
 			? newsletterHistory.map(function(rec, idx) {
 				var d     = new Date(rec.ts * 1000);
 				var label = d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-				return '<li class="feed aid-newsletter-item" data-idx="' + idx + '">'
-					+ '<a href="#" class="aid-newsletter-link">'
-					+ '<span class="aid-nl-count">' + rec.count + ' articles</span>'
-					+ label + '</a></li>';
+				return '<li class="item feed aid-newsletter-item" data-idx="' + idx + '">'
+					+ '<a href="#" class="item-title aid-newsletter-link">'
+					+ label
+					+ '<span class="aid-nl-count"> — ' + rec.count + ' articles</span>'
+					+ '</a></li>';
 			}).join('')
-			: '<li class="feed aid-nl-empty"><span>Aucun digest envoyé pour l\'instant</span></li>';
+			: '<li class="item aid-nl-empty"><span>Aucun digest envoyé pour l\'instant</span></li>';
+
+		var badge = newsletterHistory.length
+			? '<span class="unread aid-nl-badge" data-unread="' + newsletterHistory.length + '">' + newsletterHistory.length + '</span>'
+			: '';
 
 		section.innerHTML = [
-			'<p class="category-title">',
-			'  <a class="title aid-newsletter-title" href="#" title="Digest envoyés par email">',
+			'<a class="tree-folder-title aid-newsletter-title" href="#">',
+			'  <button class="dropdown-toggle aid-nl-toggle" type="button" title="Développer">',
 			'    <span class="aid-nl-icon">' + EMAILED_SVG + '</span>',
-			'    Newsletter IA',
-			newsletterHistory.length ? '    <span class="unread aid-nl-badge">' + newsletterHistory.length + '</span>' : '',
-			'  </a>',
-			'</p>',
-			'<ul class="feeds aid-newsletter-list">' + listItems + '</ul>',
+			'  </button>',
+			'  <span class="title" data-unread="' + newsletterHistory.length + '">Newsletter IA ' + badge + '</span>',
+			'</a>',
+			'<ul class="tree-folder-items aid-newsletter-list">' + listItems + '</ul>',
 		].join('\n');
 
-		// Insert before favorites, or at top of sidebar
-		var favorites = null;
-		['#nav_sidebar_favourites', '#nav_sidebar_favorites', '.category_favorites',
-		 '[id*="favorit"]', '[id*="favourite"]', '[class*="favorit"]'].forEach(function(sel) {
-			if (!favorites) favorites = sidebar.querySelector(sel);
-		});
+		// Insert before li.tree-folder.category.favorites (FreshRSS native favorites item)
+		var favorites = sidebar.querySelector('li.tree-folder.category.favorites')
+			|| sidebar.querySelector('li.category.favorites');
 		if (!favorites) {
-			sidebar.querySelectorAll('section, li').forEach(function(el) {
-				if (!favorites && /favori/i.test(el.textContent.trim().slice(0, 30))) {
-					favorites = el.closest('section') || el;
-				}
+			// Fallback: find by text
+			sidebar.querySelectorAll('li.tree-folder').forEach(function(li) {
+				if (!favorites && /favori/i.test(li.textContent.trim().slice(0, 40))) favorites = li;
 			});
 		}
-		if (favorites && favorites.parentElement === sidebar) {
+		if (favorites) {
 			sidebar.insertBefore(section, favorites);
 		} else {
-			sidebar.insertBefore(section, sidebar.firstChild);
+			// Prepend after any non-li elements at top
+			var firstLi = sidebar.querySelector('li');
+			sidebar.insertBefore(section, firstLi || sidebar.firstChild);
 		}
 
 		// ── Event handlers ──────────────────────────────────────────────────
@@ -815,6 +812,8 @@
 		section.querySelector('.aid-newsletter-title').addEventListener('click', function(e) {
 			e.preventDefault();
 			section.classList.toggle('aid-newsletter-open');
+			var list = section.querySelector('.aid-newsletter-list');
+			if (list) list.classList.toggle('active');
 		});
 
 		// Open email content on item click
