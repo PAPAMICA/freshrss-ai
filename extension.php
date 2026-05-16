@@ -4,27 +4,52 @@ declare(strict_types=1);
 
 class AIDigestExtension extends Minz_Extension {
 
-	private const DEFAULT_PROMPT = 'You are an experienced news editor.
+	private const DEFAULT_PROMPT = 'You are an experienced news editor and cybersecurity analyst.
 
-Your task is to analyze multiple news articles coming from RSS feeds and produce a concise and clear news digest in French.
+Your task is to analyze the provided RSS articles and produce a structured digest in French.
 
-Instructions:
-- Group and merge articles covering the same topic or event.
-- Avoid duplicates and repetitive information.
-- Prioritize the most important and impactful news.
-- Keep a neutral and professional journalistic tone.
-- Write in fluent natural French.
-- Create short sections with a title for each major topic.
-- Mention important facts, companies, countries, products, or people involved.
-- If multiple sources discuss the same event, synthesize them into a single coherent summary.
-- Ignore advertisements, sponsored content, and irrelevant details.
-- Keep the final output concise but informative.
+---
 
-Output format:
-- One main title (use # Title)
-- Then multiple sections:
-  ## Topic title
-  Short summarized paragraph
+## SECTION 1 — Vulnerability table (ONLY if security articles exist)
+
+If any articles mention CVEs, security vulnerabilities, patches or zero-days, output this Markdown table FIRST:
+
+| Vulnérabilité | Score | Technologie | Résumé |
+|---|---|---|---|
+| CVE-XXXX-XXXX | 9.8 Critique | Apache | Description courte en français |
+
+Score labels: Critique (9.0–10.0) · Élevé (7.0–8.9) · Moyen (4.0–6.9) · Faible (0.1–3.9)
+
+If no security articles → skip this section entirely.
+
+---
+
+## SECTION 2 — News digest
+
+# [Titre principal reflétant l\'actualité du jour]
+
+## [Sujet 1]
+Paragraphe de synthèse...
+
+## [Sujet 2]
+Paragraphe de synthèse...
+
+Rules:
+- Group and merge articles on the same topic.
+- Neutral journalistic tone, entirely in French.
+- Mention key facts: people, companies, products, countries.
+- Ignore ads and sponsored content.
+
+---
+
+## SECTION 3 — Sources
+
+## Sources
+
+List each referenced article as a Markdown link, one per line:
+[Titre de l\'article](URL)
+
+---
 
 Articles:
 {{ARTICLES}}';
@@ -258,7 +283,8 @@ Articles:
 		foreach ($entries as $entry) {
 			$articlesJson[] = [
 				'source' => $entry['feed'],
-				'title' => $entry['title'],
+				'title'  => $entry['title'],
+				'url'    => $entry['link'],
 				'content' => $entry['content'],
 			];
 		}

@@ -5,27 +5,52 @@ $cfg = function(string $key, mixed $default = '') use ($config): mixed {
 	return $config[$key] ?? $default;
 };
 
-$defaultPrompt = 'You are an experienced news editor.
+$defaultPrompt = 'You are an experienced news editor and cybersecurity analyst.
 
-Your task is to analyze multiple news articles coming from RSS feeds and produce a concise and clear news digest in French.
+Your task is to analyze the provided RSS articles and produce a structured digest in French.
 
-Instructions:
-- Group and merge articles covering the same topic or event.
-- Avoid duplicates and repetitive information.
-- Prioritize the most important and impactful news.
-- Keep a neutral and professional journalistic tone.
-- Write in fluent natural French.
-- Create short sections with a title for each major topic.
-- Mention important facts, companies, countries, products, or people involved.
-- If multiple sources discuss the same event, synthesize them into a single coherent summary.
-- Ignore advertisements, sponsored content, and irrelevant details.
-- Keep the final output concise but informative.
+---
 
-Output format:
-- One main title (use # Title)
-- Then multiple sections:
-  ## Topic title
-  Short summarized paragraph
+## SECTION 1 — Vulnerability table (ONLY if security articles exist)
+
+If any articles mention CVEs, security vulnerabilities, patches or zero-days, output this Markdown table FIRST:
+
+| Vulnérabilité | Score | Technologie | Résumé |
+|---|---|---|---|
+| CVE-XXXX-XXXX | 9.8 Critique | Apache | Description courte en français |
+
+Score labels: Critique (9.0–10.0) · Élevé (7.0–8.9) · Moyen (4.0–6.9) · Faible (0.1–3.9)
+
+If no security articles → skip this section entirely.
+
+---
+
+## SECTION 2 — News digest
+
+# [Titre principal reflétant l\'actualité du jour]
+
+## [Sujet 1]
+Paragraphe de synthèse...
+
+## [Sujet 2]
+Paragraphe de synthèse...
+
+Rules:
+- Group and merge articles on the same topic.
+- Neutral journalistic tone, entirely in French.
+- Mention key facts: people, companies, products, countries.
+- Ignore ads and sponsored content.
+
+---
+
+## SECTION 3 — Sources
+
+## Sources
+
+List each referenced article as a Markdown link, one per line:
+[Titre de l\'article](URL)
+
+---
 
 Articles:
 {{ARTICLES}}';
@@ -41,255 +66,218 @@ $providers = [
 $currentProvider = (string)$cfg('provider', 'openai');
 $currentModel    = (string)$cfg('model', 'gpt-4o-mini');
 
-// Generate CSRF token — supports both current (_csrf) and legacy (token) FreshRSS mechanisms
 $csrf  = method_exists('FreshRSS_Auth', 'csrfToken') ? FreshRSS_Auth::csrfToken() : '';
 $token = (string)Minz_Session::param('token', '');
 
-// FreshRSS uses 'e' (not 'ext_name') as extension param.
-// Keep ajax=1 when loaded in slider mode so FreshRSS renders only the panel after saving.
-$baseAction = '?c=extension&a=configure&e=' . urlencode($this->getName());
+$base = '?c=extension&a=configure&e=' . urlencode($this->getName());
 if (Minz_Request::paramBoolean('ajax')) {
-	$baseAction .= '&ajax=1';
+	$base .= '&ajax=1';
 }
-
-// CSS helper: add aid-hidden class when a condition is false
-$hide = fn(bool $show): string => $show ? '' : ' aid-hidden';
 ?>
 
 <div class="aid-cfg">
 
-<!-- ══════════════════════════════════════════════════════════════
-     FORMULAIRE 1 — Configuration IA
-     ══════════════════════════════════════════════════════════════ -->
-<form method="post" action="<?= htmlspecialchars($baseAction) ?>">
-	<input type="hidden" name="_csrf"       value="<?= htmlspecialchars($csrf) ?>">
-	<input type="hidden" name="token"       value="<?= htmlspecialchars($token) ?>">
-	<input type="hidden" name="aid_section" value="ia">
+<!-- ═══════════════════ Formulaire IA ═══════════════════ -->
+<form method="post" action="<?= htmlspecialchars($base) ?>">
+<input type="hidden" name="_csrf"       value="<?= htmlspecialchars($csrf) ?>">
+<input type="hidden" name="token"       value="<?= htmlspecialchars($token) ?>">
+<input type="hidden" name="aid_section" value="ia">
 
-	<section>
-		<h3>Configuration IA</h3>
+<section>
+<h3>Fournisseur IA</h3>
 
-		<!-- Fournisseur -->
-		<div class="aid-field">
-			<label for="aid-provider">Fournisseur</label>
-			<select id="aid-provider" name="ai_provider">
-				<?php foreach ($providers as $key => $p): ?>
-				<option value="<?= $key ?>" <?= $currentProvider === $key ? 'selected' : '' ?>><?= htmlspecialchars($p['label']) ?></option>
-				<?php endforeach; ?>
-			</select>
+<div class="aid-field">
+	<label for="aid-provider">Fournisseur</label>
+	<select id="aid-provider" name="ai_provider">
+		<?php foreach ($providers as $key => $p): ?>
+		<option value="<?= $key ?>" <?= $currentProvider === $key ? 'selected' : '' ?>><?= htmlspecialchars($p['label']) ?></option>
+		<?php endforeach; ?>
+	</select>
+</div>
+
+<div class="aid-field<?= $providers[$currentProvider]['needs_key'] ? '' : ' aid-hidden' ?>" id="aid-field-key">
+	<label for="aid-api-key">Clé API</label>
+	<div class="aid-inline">
+		<input type="password" id="aid-api-key" name="ai_api_key"
+			value="<?= htmlspecialchars((string)$cfg('api_key')) ?>"
+			placeholder="sk-…" autocomplete="new-password">
+		<button type="button" id="aid-toggle-pwd" class="btn">Afficher</button>
+	</div>
+</div>
+
+<div class="aid-field">
+	<label for="aid-api-url">URL de base de l'API</label>
+	<input type="url" id="aid-api-url" name="ai_api_base_url"
+		value="<?= htmlspecialchars((string)$cfg('api_base_url', $providers[$currentProvider]['url'])) ?>"
+		placeholder="https://api.openai.com/v1"
+		<?= !$providers[$currentProvider]['needs_url'] ? 'readonly' : '' ?>>
+	<p class="aid-hint">Rempli automatiquement. Modifiable uniquement pour un endpoint personnalisé.</p>
+</div>
+
+<div class="aid-field">
+	<label for="aid-model-select">Modèle</label>
+	<div class="aid-inline">
+		<select id="aid-model-select">
+			<?php $modelsList = $providers[$currentProvider]['models']; ?>
+			<?php foreach ($modelsList as $m): ?>
+			<option value="<?= htmlspecialchars($m) ?>" <?= $currentModel === $m ? 'selected' : '' ?>><?= htmlspecialchars($m) ?></option>
+			<?php endforeach; ?>
+			<?php if (!in_array($currentModel, $modelsList, true) && $currentModel !== ''): ?>
+			<option value="<?= htmlspecialchars($currentModel) ?>" selected><?= htmlspecialchars($currentModel) ?></option>
+			<?php endif; ?>
+			<option value="__custom__">— Autre modèle —</option>
+		</select>
+		<input type="text" id="aid-model" name="ai_model"
+			value="<?= htmlspecialchars($currentModel) ?>"
+			placeholder="Nom du modèle" class="aid-hidden">
+		<button type="button" id="aid-test-btn" class="btn">Tester la connexion</button>
+	</div>
+	<div id="aid-test-result" class="aid-test-result aid-hidden"></div>
+</div>
+</section>
+
+<section>
+<h3>Paramètres de génération</h3>
+
+<div class="aid-cols-3">
+	<div class="aid-field">
+		<label for="aid-temp">Température &nbsp;<span class="aid-badge" id="aid-temp-badge"><?= number_format((float)$cfg('temperature', 0.3), 1) ?></span></label>
+		<div class="aid-slider-wrap">
+			<input type="range" id="aid-temp" name="ai_temperature" min="0" max="2" step="0.1" value="<?= htmlspecialchars((string)$cfg('temperature', '0.3')) ?>">
 		</div>
-
-		<!-- Clé API -->
-		<div class="aid-field<?= $hide($providers[$currentProvider]['needs_key']) ?>" id="aid-field-key">
-			<label for="aid-api-key">Clé API</label>
-			<div class="aid-inline">
-				<input type="password" id="aid-api-key" name="ai_api_key"
-					value="<?= htmlspecialchars((string)$cfg('api_key')) ?>"
-					placeholder="sk-…" autocomplete="new-password">
-				<button type="button" id="aid-toggle-pwd" class="btn">Afficher</button>
-			</div>
+		<p class="aid-hint">0 = déterministe · 2 = créatif</p>
+	</div>
+	<div class="aid-field">
+		<label for="aid-art">Articles max &nbsp;<span class="aid-badge" id="aid-art-badge"><?= (int)$cfg('max_articles', 50) ?></span></label>
+		<div class="aid-slider-wrap">
+			<input type="range" id="aid-art" name="ai_max_articles" min="5" max="200" step="5" value="<?= (int)$cfg('max_articles', 50) ?>">
 		</div>
-
-		<!-- URL API -->
-		<div class="aid-field">
-			<label for="aid-api-url">URL de base de l'API</label>
-			<input type="url" id="aid-api-url" name="ai_api_base_url"
-				value="<?= htmlspecialchars((string)$cfg('api_base_url', $providers[$currentProvider]['url'])) ?>"
-				placeholder="https://api.openai.com/v1"
-				<?= !$providers[$currentProvider]['needs_url'] ? 'readonly' : '' ?>>
-			<p class="aid-hint">Rempli automatiquement selon le fournisseur. Modifiable pour un endpoint personnalisé.</p>
+		<p class="aid-hint">Articles envoyés à l'IA</p>
+	</div>
+	<div class="aid-field">
+		<label for="aid-chr">Chars/article &nbsp;<span class="aid-badge" id="aid-chr-badge"><?= (int)$cfg('max_chars', 2000) ?></span></label>
+		<div class="aid-slider-wrap">
+			<input type="range" id="aid-chr" name="ai_max_chars" min="200" max="10000" step="100" value="<?= (int)$cfg('max_chars', 2000) ?>">
 		</div>
+		<p class="aid-hint">Taille max par article</p>
+	</div>
+</div>
+</section>
 
-		<!-- Modèle + bouton test -->
-		<div class="aid-field">
-			<label for="aid-model-select">Modèle</label>
-			<div class="aid-inline">
-				<select id="aid-model-select">
-					<?php
-					$modelsList = $providers[$currentProvider]['models'];
-					foreach ($modelsList as $m): ?>
-					<option value="<?= htmlspecialchars($m) ?>" <?= $currentModel === $m ? 'selected' : '' ?>><?= htmlspecialchars($m) ?></option>
-					<?php endforeach; ?>
-					<?php if (!in_array($currentModel, $modelsList, true) && $currentModel !== ''): ?>
-					<option value="<?= htmlspecialchars($currentModel) ?>" selected><?= htmlspecialchars($currentModel) ?></option>
-					<?php endif; ?>
-					<option value="__custom__">— Autre modèle —</option>
-				</select>
-				<input type="text" id="aid-model" name="ai_model"
-					value="<?= htmlspecialchars($currentModel) ?>"
-					placeholder="Nom du modèle"
-					class="aid-hidden">
-				<button type="button" id="aid-test-btn" class="btn">Tester</button>
-			</div>
-			<div id="aid-test-result" class="aid-test-result aid-hidden"></div>
-		</div>
+<section>
+<h3>Prompt système
+	<button type="button" id="aid-reset-prompt" class="btn aid-btn-sm">Réinitialiser</button>
+</h3>
+<p class="aid-hint">Utilisez <code>{{ARTICLES}}</code> pour l'emplacement des articles. Le prompt inclut les URL des articles pour que l'IA puisse générer les sources.</p>
+<div class="aid-field">
+	<textarea id="aid-prompt" name="ai_prompt" rows="18"><?= htmlspecialchars((string)$cfg('prompt', $defaultPrompt)) ?></textarea>
+</div>
+</section>
 
-		<!-- Sliders -->
-		<div class="aid-cols-3">
-			<div class="aid-field">
-				<label>Température &nbsp;<span class="aid-badge" id="aid-temp-badge"><?= number_format((float)$cfg('temperature', 0.3), 1) ?></span></label>
-				<div class="aid-slider-wrap">
-					<input type="range" id="aid-temp" name="ai_temperature"
-						min="0" max="2" step="0.1"
-						value="<?= htmlspecialchars((string)$cfg('temperature', '0.3')) ?>">
-				</div>
-				<p class="aid-hint">0 = précis · 2 = créatif</p>
-			</div>
-			<div class="aid-field">
-				<label>Articles max &nbsp;<span class="aid-badge" id="aid-art-badge"><?= (int)$cfg('max_articles', 50) ?></span></label>
-				<div class="aid-slider-wrap">
-					<input type="range" id="aid-art" name="ai_max_articles"
-						min="5" max="200" step="5"
-						value="<?= (int)$cfg('max_articles', 50) ?>">
-				</div>
-				<p class="aid-hint">Nb d'articles envoyés</p>
-			</div>
-			<div class="aid-field">
-				<label>Chars/article &nbsp;<span class="aid-badge" id="aid-chr-badge"><?= (int)$cfg('max_chars', 2000) ?></span></label>
-				<div class="aid-slider-wrap">
-					<input type="range" id="aid-chr" name="ai_max_chars"
-						min="200" max="10000" step="100"
-						value="<?= (int)$cfg('max_chars', 2000) ?>">
-				</div>
-				<p class="aid-hint">Taille max/article</p>
-			</div>
-		</div>
-
-		<!-- Prompt -->
-		<div class="aid-field">
-			<label for="aid-prompt">
-				Prompt système
-				<button type="button" id="aid-reset-prompt" class="btn aid-btn-sm">Réinitialiser</button>
-			</label>
-			<p class="aid-hint">Utilisez <code>{{ARTICLES}}</code> pour l'emplacement des articles.</p>
-			<textarea id="aid-prompt" name="ai_prompt" rows="14"><?= htmlspecialchars((string)$cfg('prompt', $defaultPrompt)) ?></textarea>
-		</div>
-
-		<div class="aid-actions">
-			<button type="submit" class="btn important">Enregistrer la configuration IA</button>
-		</div>
-	</section>
+<div class="aid-actions">
+	<button type="submit" class="btn important">Enregistrer la configuration IA</button>
+</div>
 </form>
 
-<!-- ══════════════════════════════════════════════════════════════
-     FORMULAIRE 2 — Rapport email
-     ══════════════════════════════════════════════════════════════ -->
-<form method="post" action="<?= htmlspecialchars($baseAction) ?>">
-	<input type="hidden" name="_csrf"       value="<?= htmlspecialchars($csrf) ?>">
-	<input type="hidden" name="token"       value="<?= htmlspecialchars($token) ?>">
-	<input type="hidden" name="aid_section" value="mail">
+<!-- ═══════════════════ Formulaire Email ═══════════════════ -->
+<form method="post" action="<?= htmlspecialchars($base) ?>">
+<input type="hidden" name="_csrf"       value="<?= htmlspecialchars($csrf) ?>">
+<input type="hidden" name="token"       value="<?= htmlspecialchars($token) ?>">
+<input type="hidden" name="aid_section" value="mail">
 
-	<section>
-		<h3>
-			Rapport par email
-			<label class="aid-toggle-label">
-				<input type="checkbox" name="email_enabled" value="1" id="aid-email-toggle"
-					<?= $cfg('email_enabled', false) ? 'checked' : '' ?>>
-				Activer
-			</label>
-		</h3>
+<section>
+<h3>Rapport par email
+	<label class="aid-toggle-label">
+		<input type="checkbox" name="email_enabled" value="1" id="aid-email-toggle" <?= $cfg('email_enabled', false) ? 'checked' : '' ?>>
+		Activer
+	</label>
+</h3>
 
-		<div id="aid-email-settings" class="<?= $cfg('email_enabled', false) ? '' : 'aid-hidden' ?>">
+<div id="aid-email-settings" class="<?= $cfg('email_enabled', false) ? '' : 'aid-hidden' ?>">
 
-			<div class="aid-cols-2">
-				<div class="aid-field">
-					<label for="aid-email-to">Email destinataire</label>
-					<input type="email" id="aid-email-to" name="email_to"
-						value="<?= htmlspecialchars((string)$cfg('email_to')) ?>"
-						placeholder="vous@exemple.com">
-				</div>
-				<div class="aid-field">
-					<label for="aid-email-from">Email expéditeur</label>
-					<input type="email" id="aid-email-from" name="email_from"
-						value="<?= htmlspecialchars((string)$cfg('email_from')) ?>"
-						placeholder="freshrss@exemple.com">
-				</div>
-			</div>
+<div class="aid-cols-2">
+	<div class="aid-field">
+		<label for="aid-email-to">Email destinataire</label>
+		<input type="email" id="aid-email-to" name="email_to" value="<?= htmlspecialchars((string)$cfg('email_to')) ?>" placeholder="vous@exemple.com">
+	</div>
+	<div class="aid-field">
+		<label for="aid-email-from">Email expéditeur</label>
+		<input type="email" id="aid-email-from" name="email_from" value="<?= htmlspecialchars((string)$cfg('email_from')) ?>" placeholder="freshrss@exemple.com">
+	</div>
+</div>
 
-			<div class="aid-cols-2">
-				<div class="aid-field">
-					<label for="aid-email-name">Nom expéditeur</label>
-					<input type="text" id="aid-email-name" name="email_from_name"
-						value="<?= htmlspecialchars((string)$cfg('email_from_name', 'FreshRSS AI Digest')) ?>">
-				</div>
-				<div class="aid-field">
-					<label for="aid-schedule">Fréquence</label>
-					<select id="aid-schedule" name="email_schedule">
-						<option value="never"  <?= $cfg('email_schedule') === 'never'  ? 'selected' : '' ?>>Désactivé</option>
-						<option value="daily"  <?= $cfg('email_schedule') === 'daily'  ? 'selected' : '' ?>>Quotidien</option>
-						<option value="weekly" <?= $cfg('email_schedule') === 'weekly' ? 'selected' : '' ?>>Hebdomadaire (lundi)</option>
-					</select>
-				</div>
-			</div>
+<div class="aid-cols-2">
+	<div class="aid-field">
+		<label for="aid-email-name">Nom expéditeur</label>
+		<input type="text" id="aid-email-name" name="email_from_name" value="<?= htmlspecialchars((string)$cfg('email_from_name', 'FreshRSS AI Digest')) ?>">
+	</div>
+	<div class="aid-field">
+		<label for="aid-schedule">Fréquence d'envoi</label>
+		<select id="aid-schedule" name="email_schedule">
+			<option value="never"  <?= $cfg('email_schedule') === 'never'  ? 'selected' : '' ?>>Désactivé</option>
+			<option value="daily"  <?= $cfg('email_schedule') === 'daily'  ? 'selected' : '' ?>>Quotidien</option>
+			<option value="weekly" <?= $cfg('email_schedule') === 'weekly' ? 'selected' : '' ?>>Hebdomadaire (lundi)</option>
+		</select>
+	</div>
+</div>
 
-			<div class="aid-field aid-field--narrow">
-				<label for="aid-hour">Heure d'envoi</label>
-				<input type="number" id="aid-hour" name="email_hour"
-					min="0" max="23"
-					value="<?= (int)$cfg('email_hour', 8) ?>">
-				<p class="aid-hint">0 – 23 h</p>
-			</div>
+<div class="aid-field aid-field--narrow">
+	<label for="aid-hour">Heure d'envoi</label>
+	<input type="number" id="aid-hour" name="email_hour" min="0" max="23" value="<?= (int)$cfg('email_hour', 8) ?>">
+	<p class="aid-hint">0 – 23 h</p>
+</div>
 
-			<!-- SMTP -->
-			<div class="aid-box">
-				<h4>SMTP <small>(optionnel — laissez vide pour utiliser <code>mail()</code>)</small></h4>
-				<div class="aid-cols-3">
-					<div class="aid-field">
-						<label for="aid-smtp-host">Hôte</label>
-						<input type="text" id="aid-smtp-host" name="smtp_host"
-							value="<?= htmlspecialchars((string)$cfg('smtp_host')) ?>"
-							placeholder="smtp.gmail.com">
-					</div>
-					<div class="aid-field">
-						<label for="aid-smtp-port">Port</label>
-						<input type="number" id="aid-smtp-port" name="smtp_port"
-							value="<?= (int)$cfg('smtp_port', 587) ?>">
-					</div>
-					<div class="aid-field">
-						<label for="aid-smtp-user">Utilisateur</label>
-						<input type="text" id="aid-smtp-user" name="smtp_user"
-							value="<?= htmlspecialchars((string)$cfg('smtp_user')) ?>">
-					</div>
-				</div>
-				<div class="aid-cols-2">
-					<div class="aid-field">
-						<label for="aid-smtp-pass">Mot de passe</label>
-						<input type="password" id="aid-smtp-pass" name="smtp_pass"
-							value="<?= htmlspecialchars((string)$cfg('smtp_pass')) ?>"
-							autocomplete="new-password">
-					</div>
-					<div class="aid-field aid-check-row">
-						<label>
-							<input type="checkbox" name="smtp_tls" value="1" <?= $cfg('smtp_tls', true) ? 'checked' : '' ?>>
-							Activer TLS / STARTTLS
-						</label>
-					</div>
-				</div>
-			</div>
+<div class="aid-box">
+<h4>Configuration SMTP <small>(optionnel)</small></h4>
+<p class="aid-hint">Laissez vide pour utiliser la fonction <code>mail()</code> de PHP.</p>
+<div class="aid-cols-3">
+	<div class="aid-field">
+		<label for="aid-smtp-host">Hôte SMTP</label>
+		<input type="text" id="aid-smtp-host" name="smtp_host" value="<?= htmlspecialchars((string)$cfg('smtp_host')) ?>" placeholder="smtp.gmail.com">
+	</div>
+	<div class="aid-field">
+		<label for="aid-smtp-port">Port</label>
+		<input type="number" id="aid-smtp-port" name="smtp_port" value="<?= (int)$cfg('smtp_port', 587) ?>">
+	</div>
+	<div class="aid-field">
+		<label for="aid-smtp-user">Utilisateur</label>
+		<input type="text" id="aid-smtp-user" name="smtp_user" value="<?= htmlspecialchars((string)$cfg('smtp_user')) ?>">
+	</div>
+</div>
+<div class="aid-cols-2">
+	<div class="aid-field">
+		<label for="aid-smtp-pass">Mot de passe</label>
+		<input type="password" id="aid-smtp-pass" name="smtp_pass" value="<?= htmlspecialchars((string)$cfg('smtp_pass')) ?>" autocomplete="new-password">
+	</div>
+	<div class="aid-field aid-check-row">
+		<label>
+			<input type="checkbox" name="smtp_tls" value="1" <?= $cfg('smtp_tls', true) ? 'checked' : '' ?>>
+			Activer TLS / STARTTLS
+		</label>
+	</div>
+</div>
+</div>
 
-			<!-- Cron -->
-			<div class="aid-box">
-				<h4>Envoi automatique (cron)</h4>
-				<p class="aid-hint">Ajoutez cette ligne à votre crontab (<code>crontab -e</code>) :</p>
-				<code class="aid-cron-code">0 <?= (int)$cfg('email_hour', 8) ?> * * * www-data php /var/www/FreshRSS/extensions/xExtension-AIDigest/cron.php &gt;&gt; /var/log/freshrss-ai-digest.log 2&gt;&amp;1</code>
-			</div>
+<div class="aid-box">
+<h4>Cron — envoi automatique</h4>
+<p class="aid-hint">Ajoutez cette ligne à votre crontab (<code>crontab -e</code>) :</p>
+<code class="aid-cron-code">0 <?= (int)$cfg('email_hour', 8) ?> * * * www-data php /var/www/FreshRSS/extensions/xExtension-AIDigest/cron.php &gt;&gt; /var/log/freshrss-ai-digest.log 2&gt;&amp;1</code>
+</div>
 
-			<!-- Test email -->
-			<div class="aid-actions">
-				<button type="button" id="aid-test-email" class="btn">Envoyer un email de test</button>
-				<span id="aid-email-status" class="aid-status"></span>
-			</div>
-		</div>
+<div class="aid-actions">
+	<button type="button" id="aid-test-email" class="btn">Envoyer un email de test</button>
+	<span id="aid-email-status" class="aid-status"></span>
+</div>
+</div>
 
-		<div class="aid-actions">
-			<button type="submit" class="btn important">Enregistrer la configuration email</button>
-		</div>
-	</section>
+<div class="aid-actions">
+	<button type="submit" class="btn important">Enregistrer la configuration email</button>
+</div>
+</section>
 </form>
 
 </div>
 
-<!-- Données PHP pour summary.js (survit à l'insertion innerHTML via AJAX FreshRSS) -->
 <div id="aid-config-data"
 	data-providers="<?= htmlspecialchars(json_encode(array_map(fn($p) => ['url' => $p['url'], 'models' => $p['models'], 'needs_key' => $p['needs_key'], 'needs_url' => $p['needs_url']], $providers), JSON_UNESCAPED_UNICODE), ENT_QUOTES) ?>"
 	data-default-prompt="<?= htmlspecialchars($defaultPrompt, ENT_QUOTES) ?>"

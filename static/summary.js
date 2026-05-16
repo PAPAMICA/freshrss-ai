@@ -258,11 +258,9 @@
 	}
 
 	function callMarkRead(ids, onSuccess, onError) {
-		fetch(buildUrl('markRead'), {
-			method: 'POST',
-			headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-			body: 'ids=' + encodeURIComponent(JSON.stringify(ids)),
-		})
+		// GET avoids the FreshRSS CSRF check that blocks all POSTs.
+		// Minz_Request::param() reads from both GET and POST.
+		fetch(buildUrl('markRead', { ids: JSON.stringify(ids) }))
 		.then(function(r) { return r.json(); })
 		.then(function(data) {
 			if (data.success) {
@@ -283,6 +281,45 @@
 		var read = markedReadIds.size;
 		var el = document.getElementById('aid-footer-info');
 		if (el) el.textContent = read + '/' + total + ' article(s) marqué(s) comme lu(s)';
+	}
+
+	// ─── Post-process rendered markdown ──────────────────────────────────────
+
+	function postProcessSummary(el) {
+		// Open all links in new tab
+		el.querySelectorAll('a').forEach(function(a) {
+			a.setAttribute('target', '_blank');
+			a.setAttribute('rel', 'noopener noreferrer');
+		});
+
+		// Find "Sources" heading and style its links as pills
+		el.querySelectorAll('h2, h3').forEach(function(heading) {
+			if (/sources?/i.test(heading.textContent.trim())) {
+				heading.classList.add('aid-sources-heading');
+				var node = heading.nextElementSibling;
+				while (node) {
+					node.classList.add('aid-sources-block');
+					node.querySelectorAll('a').forEach(function(a) {
+						a.classList.add('aid-source-pill');
+					});
+					node = node.nextElementSibling;
+				}
+			}
+		});
+
+		// Style vulnerability table rows by score
+		el.querySelectorAll('table').forEach(function(table) {
+			table.classList.add('aid-vuln-table');
+			table.querySelectorAll('tbody tr').forEach(function(row) {
+				var scoreCell = row.cells[1];
+				if (!scoreCell) return;
+				var txt = scoreCell.textContent.toLowerCase();
+				if (txt.includes('critique'))    row.classList.add('aid-vuln-critique');
+				else if (txt.includes('élevé') || txt.includes('elev')) row.classList.add('aid-vuln-high');
+				else if (txt.includes('moyen')) row.classList.add('aid-vuln-medium');
+				else if (txt.includes('faible')) row.classList.add('aid-vuln-low');
+			});
+		});
 	}
 
 	// ─── Main generate ────────────────────────────────────────────────────────
@@ -312,20 +349,21 @@
 				var metaEl = document.getElementById('aid-meta');
 				if (metaEl) metaEl.textContent = data.count + ' article(s) analysé(s)';
 
-				loadMarked(function() {
-					var summaryEl = document.getElementById('aid-summary');
-					try {
-						if (window.marked && window.marked.parse) {
-							marked.setOptions({ breaks: true, gfm: true });
-							summaryEl.innerHTML = marked.parse(data.summary || '');
-						} else {
-							summaryEl.innerHTML = '<pre>' + escapeHtml(data.summary || '') + '</pre>';
-						}
-					} catch (e) {
+			loadMarked(function() {
+				var summaryEl = document.getElementById('aid-summary');
+				try {
+					if (window.marked && window.marked.parse) {
+						marked.setOptions({ breaks: true, gfm: true });
+						summaryEl.innerHTML = marked.parse(data.summary || '');
+					} else {
 						summaryEl.innerHTML = '<pre>' + escapeHtml(data.summary || '') + '</pre>';
 					}
-					showSection('content');
-				});
+				} catch (e) {
+					summaryEl.innerHTML = '<pre>' + escapeHtml(data.summary || '') + '</pre>';
+				}
+				postProcessSummary(summaryEl);
+				showSection('content');
+			});
 
 			renderArticleList(data.articles || []);
 
