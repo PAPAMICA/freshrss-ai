@@ -1097,6 +1097,8 @@ body.aid-modal-open {
 	min-height: 500px;
 	border: none;
 	background: #fff;
+	/* Allow horizontal scroll if email wider than container */
+	overflow-x: auto;
 }
 
 /* Highlight active newsletter item in sidebar */

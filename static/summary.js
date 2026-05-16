@@ -780,12 +780,14 @@
 			});
 		}
 		var titleEl = section.querySelector('.aid-newsletter-title .title');
+		var titleLink = section.querySelector('.aid-newsletter-title');
+		var nlCount = newsletterHistory.length;
 		if (titleEl) {
-			var badge = newsletterHistory.length
-				? '<span class="unread aid-nl-badge" data-unread="' + newsletterHistory.length + '">' + newsletterHistory.length + '</span>'
-				: '';
-			titleEl.innerHTML = 'Newsletter IA ' + badge;
-			titleEl.setAttribute('data-unread', newsletterHistory.length);
+			titleEl.textContent = 'Newsletter IA';
+			titleEl.setAttribute('data-unread', nlCount);
+		}
+		if (titleLink) {
+			titleLink.setAttribute('data-unread', nlCount);
 		}
 	}
 
@@ -821,16 +823,14 @@
 
 		var listItems = buildNewsletterListItems();
 
-		var badge = newsletterHistory.length
-			? '<span class="unread aid-nl-badge" data-unread="' + newsletterHistory.length + '">' + newsletterHistory.length + '</span>'
-			: '';
+		var nlCount = newsletterHistory.length;
 
 		section.innerHTML = [
-			'<a class="tree-folder-title aid-newsletter-title" href="#">',
+			'<a class="tree-folder-title aid-newsletter-title" href="#" data-unread="' + nlCount + '">',
 			'  <button class="dropdown-toggle aid-nl-toggle" type="button" title="Développer">',
 			'    <span class="aid-nl-icon">' + EMAILED_SVG + '</span>',
 			'  </button>',
-			'  <span class="title" data-unread="' + newsletterHistory.length + '">Newsletter IA ' + badge + '</span>',
+			'  <span class="title" data-unread="' + nlCount + '">Newsletter IA</span>',
 			'</a>',
 			'<ul class="tree-folder-items aid-newsletter-list">' + listItems + '</ul>',
 		].join('\n');
@@ -1026,23 +1026,34 @@
 				var bodyDiv = fluxEl.querySelector('.aid-nl-stream-body');
 				var iframe = document.createElement('iframe');
 				iframe.className = 'aid-nl-stream-iframe';
-				iframe.setAttribute('sandbox', 'allow-same-origin');
-				iframe.srcdoc = data.html;
+				iframe.setAttribute('sandbox', 'allow-same-origin allow-popups');
 				bodyDiv.appendChild(iframe);
 
-				// Auto-resize iframe to content height
+				// Write HTML content directly (more reliable than srcdoc for complex email HTML)
+				var iDoc = iframe.contentDocument || iframe.contentWindow.document;
+				iDoc.open();
+				iDoc.write(data.html);
+				iDoc.close();
+
+				// Auto-resize iframe to full content height (with multiple retries for images)
 				function resizeFrame() {
 					try {
-						var h = iframe.contentDocument.documentElement.scrollHeight
-							|| iframe.contentDocument.body.scrollHeight;
+						var doc = iframe.contentDocument || iframe.contentWindow.document;
+						var h = Math.max(
+							doc.documentElement.scrollHeight || 0,
+							doc.body ? doc.body.scrollHeight : 0,
+							doc.documentElement.offsetHeight || 0
+						);
 						if (h > 100) iframe.style.height = h + 'px';
 					} catch (e) {}
 				}
 				iframe.addEventListener('load', function() {
 					resizeFrame();
-					setTimeout(resizeFrame, 300);
+					setTimeout(resizeFrame, 200);
+					setTimeout(resizeFrame, 800);
 				});
-				setTimeout(resizeFrame, 500);
+				setTimeout(resizeFrame, 300);
+				setTimeout(resizeFrame, 1000);
 
 				// Close button
 				fluxEl.querySelector('.aid-nl-stream-close').addEventListener('click', function(e) {
