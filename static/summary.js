@@ -737,21 +737,23 @@
 	}
 
 	function findSidebarContainer() {
-		// Try multiple selectors used across FreshRSS versions/themes
-		var candidates = [
-			'#nav_sidebar_categories',
-			'#nav_sidebar nav',
-			'#aside nav',
+		// Target specifically the categories nav, NOT the whole <aside>
+		// FreshRSS puts categories inside these containers depending on version/theme
+		var cats = [
+			'#nav_sidebar_categories',   // FreshRSS ≥1.22
+			'#nav_sidebar > nav',
+			'#nav_sidebar > ul',
+			'#aside > nav',
 			'#aside_feed',
-			'#aside',
-			'aside',
-			'.sidebar-content',
-			'#sidebar',
 		];
-		for (var i = 0; i < candidates.length; i++) {
-			var el = document.querySelector(candidates[i]);
+		for (var i = 0; i < cats.length; i++) {
+			var el = document.querySelector(cats[i]);
 			if (el) return el;
 		}
+		// Fallback: find the container that holds .category sections
+		var section = document.querySelector('section.category');
+		if (section && section.parentElement) return section.parentElement;
+
 		return null;
 	}
 
@@ -926,6 +928,10 @@
 				}
 			}
 			if (shouldDecorate) decorateEmailedArticles();
+			// Retry sidebar injection if the categories nav just appeared
+			if (!document.getElementById('aid-newsletter-section') && findSidebarContainer()) {
+				tryInjectNewsletterSidebar();
+			}
 		});
 		observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
 	}

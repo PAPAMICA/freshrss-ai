@@ -266,21 +266,29 @@ Articles:
 	// ─── Data storage helpers ─────────────────────────────────────────────────
 
 	private function dataDir(): string {
-		$dir = __DIR__ . '/data';
-		if (!is_dir($dir)) {
-			mkdir($dir, 0755, true);
+		// Prefer FreshRSS's writable DATA_PATH (always accessible by web server)
+		$base = defined('DATA_PATH') && is_dir(DATA_PATH)
+			? DATA_PATH . DIRECTORY_SEPARATOR . 'ai-newsletter'
+			: __DIR__ . DIRECTORY_SEPARATOR . 'data';
+
+		if (!is_dir($base) && !@mkdir($base, 0755, true)) {
+			// Last resort: system temp dir
+			$base = sys_get_temp_dir() . DIRECTORY_SEPARATOR . 'ai-newsletter';
+			@mkdir($base, 0755, true);
 		}
-		return $dir;
+		return $base;
 	}
 
 	private function readData(string $name, mixed $default = []): mixed {
-		$file = $this->dataDir() . '/' . $name . '.json';
-		if (!file_exists($file)) return $default;
-		return json_decode((string) file_get_contents($file), true) ?? $default;
+		$file = $this->dataDir() . DIRECTORY_SEPARATOR . $name . '.json';
+		if (!is_readable($file)) return $default;
+		$raw = @file_get_contents($file);
+		return ($raw !== false) ? (json_decode($raw, true) ?? $default) : $default;
 	}
 
 	private function writeData(string $name, mixed $data): void {
-		file_put_contents($this->dataDir() . '/' . $name . '.json', json_encode($data, JSON_UNESCAPED_UNICODE));
+		$file = $this->dataDir() . DIRECTORY_SEPARATOR . $name . '.json';
+		@file_put_contents($file, json_encode($data, JSON_UNESCAPED_UNICODE));
 	}
 
 	// ─── Emailed articles tracking ────────────────────────────────────────────

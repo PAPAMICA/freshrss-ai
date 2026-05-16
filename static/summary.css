@@ -812,36 +812,46 @@ body.aid-modal-open {
 
 /* ─── Emailed article icon ──────────────────────────────────────────── */
 
+.aid-emailed-wrap {
+	display: inline-flex;
+	align-items: center;
+	vertical-align: middle;
+}
+
 .aid-emailed-icon {
 	display: inline-block;
-	width: 13px;
-	height: 13px;
+	width: 12px;
+	height: 12px;
 	vertical-align: middle;
-	margin-left: 5px;
-	opacity: .55;
+	margin: 0 3px;
+	opacity: .5;
 	color: var(--color-accent, #0060df);
 	flex-shrink: 0;
 }
 
 /* ─── Newsletter sidebar section ─────────────────────────────────────── */
+/* Inherits .category styles from FreshRSS — only override what we need */
 
-.aid-newsletter-section {
-	border-top: 1px solid var(--color-border, #ddd);
-	margin-bottom: 0 !important;
-}
+.aid-newsletter-section {}
 
 .aid-newsletter-title {
-	display: flex;
+	display: flex !important;
+	align-items: center !important;
+	gap: 5px !important;
+	cursor: pointer !important;
+	width: 100% !important;
+}
+
+.aid-nl-icon {
+	display: inline-flex;
 	align-items: center;
-	gap: 6px;
-	cursor: pointer;
+	flex-shrink: 0;
 }
 
 .aid-nl-icon svg {
-	width: 14px;
-	height: 14px;
-	vertical-align: middle;
-	opacity: .7;
+	width: 13px;
+	height: 13px;
+	opacity: .75;
 }
 
 .aid-nl-badge {
@@ -852,10 +862,15 @@ body.aid-modal-open {
 	padding: 1px 7px;
 	font-size: 11px;
 	font-weight: 700;
+	flex-shrink: 0;
 }
 
+/* List is hidden until section is toggled open */
 .aid-newsletter-list {
 	display: none;
+	margin: 0;
+	padding: 0;
+	list-style: none;
 }
 
 .aid-newsletter-open .aid-newsletter-list {
@@ -866,15 +881,24 @@ body.aid-modal-open {
 	display: flex;
 	flex-direction: column;
 	gap: 2px;
-	padding: 5px 8px 5px 24px;
+	padding: 5px 8px 5px 28px;
 	font-size: 12px;
 	line-height: 1.3;
-	color: var(--color-text, #333);
+	color: var(--color-text, inherit);
 	text-decoration: none;
+	border-radius: 3px;
 }
 
 .aid-newsletter-item .aid-newsletter-link:hover {
-	background: var(--color-background-alt, #f0f0f0);
+	background: var(--color-background-alt, rgba(128,128,128,.1));
+}
+
+.aid-nl-empty span {
+	display: block;
+	padding: 5px 8px 5px 28px;
+	font-size: 11px;
+	opacity: .6;
+	font-style: italic;
 }
 
 .aid-nl-count {
