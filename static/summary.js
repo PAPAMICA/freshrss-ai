@@ -1022,42 +1022,53 @@
 
 				stream.insertBefore(fluxEl, stream.firstChild);
 
-				// Inject email HTML via iframe (to isolate email styles)
-				var bodyDiv = fluxEl.querySelector('.aid-nl-stream-body');
-				var iframe = document.createElement('iframe');
-				iframe.className = 'aid-nl-stream-iframe';
-				iframe.setAttribute('sandbox', 'allow-same-origin allow-popups');
-				bodyDiv.appendChild(iframe);
+			// Inject email HTML via iframe (blob URL preserves all inline CSS/styles)
+			var bodyDiv = fluxEl.querySelector('.aid-nl-stream-body');
+			var iframe = document.createElement('iframe');
+			iframe.className = 'aid-nl-stream-iframe';
+			// allow-scripts needed for email CSS/fonts; allow-popups for links
+			iframe.setAttribute('sandbox', 'allow-scripts allow-popups');
+			bodyDiv.appendChild(iframe);
 
-				// Write HTML content directly (more reliable than srcdoc for complex email HTML)
-				var iDoc = iframe.contentDocument || iframe.contentWindow.document;
-				iDoc.open();
-				iDoc.write(data.html);
-				iDoc.close();
+			// Inject a postMessage height reporter into the email HTML
+			var heightScript = '<script>' +
+				'function reportHeight(){' +
+				'  var h=Math.max(document.documentElement.scrollHeight,document.body?document.body.scrollHeight:0);' +
+				'  parent.postMessage({type:"aid-nl-height",h:h},"*");' +
+				'}' +
+				'window.addEventListener("load",function(){reportHeight();setTimeout(reportHeight,500);setTimeout(reportHeight,1500);});' +
+				'<\/script>';
+			var enrichedHtml = data.html.indexOf('</body>') !== -1
+				? data.html.replace('</body>', heightScript + '</body>')
+				: data.html + heightScript;
 
-				// Auto-resize iframe to full content height (with multiple retries for images)
-				function resizeFrame() {
-					try {
-						var doc = iframe.contentDocument || iframe.contentWindow.document;
-						var h = Math.max(
-							doc.documentElement.scrollHeight || 0,
-							doc.body ? doc.body.scrollHeight : 0,
-							doc.documentElement.offsetHeight || 0
-						);
-						if (h > 100) iframe.style.height = h + 'px';
-					} catch (e) {}
+			// Use blob URL so the browser treats it as a real HTML page (applies all CSS)
+			var blob = new Blob([enrichedHtml], { type: 'text/html; charset=utf-8' });
+			var blobUrl = URL.createObjectURL(blob);
+			iframe.src = blobUrl;
+
+			// Listen for height messages from the iframe
+			function onHeightMsg(e) {
+				if (e.data && e.data.type === 'aid-nl-height' && e.data.h > 100) {
+					iframe.style.height = e.data.h + 'px';
 				}
-				iframe.addEventListener('load', function() {
-					resizeFrame();
-					setTimeout(resizeFrame, 200);
-					setTimeout(resizeFrame, 800);
-				});
-				setTimeout(resizeFrame, 300);
-				setTimeout(resizeFrame, 1000);
+			}
+			window.addEventListener('message', onHeightMsg);
 
-				// Close button
+			iframe.addEventListener('load', function() {
+				URL.revokeObjectURL(blobUrl);
+				// Fallback height after load in case postMessage is delayed
+				setTimeout(function() {
+					if (parseInt(iframe.style.height, 10) < 200) {
+						iframe.style.height = '600px';
+					}
+				}, 2000);
+			});
+
+				// Close button — also clean up the height message listener
 				fluxEl.querySelector('.aid-nl-stream-close').addEventListener('click', function(e) {
 					e.preventDefault();
+					window.removeEventListener('message', onHeightMsg);
 					fluxEl.remove();
 				});
 
@@ -1079,20 +1090,21 @@
 			.then(function(r) { return r.json(); })
 			.then(function(data) {
 				if (!data.html) return;
-				var overlay = document.createElement('div');
-				overlay.className = 'aid-nl-overlay';
-				overlay.innerHTML = [
-					'<div class="aid-nl-viewer">',
-					'  <button class="aid-nl-close" title="Fermer">&#x2715;</button>',
-					'  <iframe class="aid-nl-frame" sandbox="allow-same-origin"></iframe>',
-					'</div>',
-				].join('');
-				document.body.appendChild(overlay);
+			var overlay = document.createElement('div');
+			overlay.className = 'aid-nl-overlay';
+			overlay.innerHTML = [
+				'<div class="aid-nl-viewer">',
+				'  <button class="aid-nl-close" title="Fermer">&#x2715;</button>',
+				'  <iframe class="aid-nl-frame" sandbox="allow-scripts allow-popups"></iframe>',
+				'</div>',
+			].join('');
+			document.body.appendChild(overlay);
 
-				var frame = overlay.querySelector('iframe');
-				frame.contentDocument.open();
-				frame.contentDocument.write(data.html);
-				frame.contentDocument.close();
+			var frame = overlay.querySelector('iframe');
+			var overlayBlob = new Blob([data.html], { type: 'text/html; charset=utf-8' });
+			var overlayUrl = URL.createObjectURL(overlayBlob);
+			frame.src = overlayUrl;
+			frame.addEventListener('load', function() { URL.revokeObjectURL(overlayUrl); });
 
 				overlay.querySelector('.aid-nl-close').addEventListener('click', function() {
 					overlay.remove();

@@ -42,15 +42,6 @@ Rules:
 
 ---
 
-## SECTION 3 — Sources
-
-## Sources
-
-List each referenced article as a Markdown link, one per line:
-[Article title in {{LANGUAGE}}](URL)
-
----
-
 Articles:
 {{ARTICLES}}';
 
