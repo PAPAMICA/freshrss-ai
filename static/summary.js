@@ -626,26 +626,45 @@
 
 		// ── Test email ─────────────────────────────────────────────────────
 		var testEmailBtn    = gid('aid-test-email');
+		var forceSendBtn    = gid('aid-force-send');
 		var testEmailStatus = gid('aid-email-status');
+
+		function doEmailAction(btn, url, label) {
+			btn.disabled = true;
+			testEmailStatus.textContent = label;
+			testEmailStatus.className = 'aid-status';
+			fetch(url)
+				.then(function(r) { return r.json(); })
+				.then(function(data) {
+					testEmailStatus.textContent = data.success ? (data.message || 'OK') : (data.error || 'Erreur');
+					testEmailStatus.className = 'aid-status ' + (data.success ? 'ok' : 'err');
+					// Refresh newsletter sidebar after forced send
+					if (data.success) {
+						newsletterHistory = [];
+						var existing = document.getElementById('aid-newsletter-section');
+						if (existing) existing.remove();
+						sidebarRetries = 0;
+						loadNewsletterHistory();
+					}
+					btn.disabled = false;
+				})
+				.catch(function() {
+					testEmailStatus.textContent = 'Erreur réseau';
+					testEmailStatus.className = 'aid-status err';
+					btn.disabled = false;
+				});
+		}
+
 		if (testEmailBtn && testEmailStatus) {
 			testEmailBtn.addEventListener('click', function() {
-				var btn = this;
-				btn.disabled = true;
-				testEmailStatus.textContent = 'Envoi…';
-				testEmailStatus.className = 'adc-inline-status';
+				doEmailAction(this, '/i/?aiDigestAction=emailReport&get=a&_t=' + Date.now(), 'Envoi test…');
+			});
+		}
 
-				fetch('/i/?aiDigestAction=emailReport&get=a')
-					.then(function(r) { return r.json(); })
-					.then(function(data) {
-						testEmailStatus.textContent = data.success ? (data.message || 'Envoyé !') : (data.error || 'Erreur');
-						testEmailStatus.className = 'adc-inline-status ' + (data.success ? 'success' : 'error');
-						btn.disabled = false;
-					})
-					.catch(function() {
-						testEmailStatus.textContent = 'Erreur réseau';
-						testEmailStatus.className = 'adc-inline-status error';
-						btn.disabled = false;
-					});
+		if (forceSendBtn && testEmailStatus) {
+			forceSendBtn.addEventListener('click', function() {
+				if (!confirm('Envoyer le digest maintenant ? Cela marquera les articles comme envoyés et les exclura du prochain envoi automatique.')) return;
+				doEmailAction(this, '/i/?aiDigestAction=emailReport&get=a&_t=' + Date.now(), 'Génération et envoi…');
 			});
 		}
 	}
@@ -669,83 +688,143 @@
 	var EMAILED_SVG = '<svg class="aid-emailed-icon" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" title="Envoyé par email"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg>';
 
 	function decorateArticleEl(el) {
-		var id = el.getAttribute('data-id') || el.getAttribute('id') || '';
-		// FreshRSS sets id like "current_1778894110768558" or uses data-id
-		id = id.replace(/^[^0-9]*/, '');
+		// FreshRSS uses id="flux_1234567" or data-id="1234567"
+		var raw = el.getAttribute('data-id') || el.getAttribute('id') || '';
+		var id  = raw.replace(/^[^0-9]*/, '');
 		if (!id || !emailedIds.has(id)) return;
-		if (el.querySelector('.aid-emailed-icon')) return; // already decorated
+		if (el.querySelector('.aid-emailed-icon')) return;
 
-		// Insert icon after the read/unread toggle (first <a> or first child)
-		var target = el.querySelector('.read') || el.querySelector('.flux_header') || el.firstElementChild;
-		if (target) {
-			var span = document.createElement('span');
-			span.innerHTML = EMAILED_SVG;
-			target.appendChild(span.firstElementChild);
-		}
+		// Find the best anchor point: the first action/icon area inside the item
+		var target = el.querySelector('.item_title, .flux_header, .title, a');
+		if (!target) target = el;
+		var icon = document.createElement('span');
+		icon.className = 'aid-emailed-wrap';
+		icon.innerHTML = EMAILED_SVG;
+		target.insertAdjacentElement('afterend', icon);
 	}
 
 	function decorateEmailedArticles() {
-		document.querySelectorAll('.flux[data-id], .flux[id]').forEach(decorateArticleEl);
+		// .flux covers both list and reader views in FreshRSS
+		document.querySelectorAll('.flux, [class*="entry"], [class*="article"]').forEach(function(el) {
+			if (el.classList.contains('aid-emailed-wrap')) return;
+			decorateArticleEl(el);
+		});
 	}
 
 	// ─── Newsletter sidebar section ───────────────────────────────────────────
 
 	var newsletterHistory = [];
+	var sidebarRetries = 0;
 
 	function loadNewsletterHistory() {
 		fetch(buildUrl('emailHistory'))
 			.then(function(r) { return r.json(); })
 			.then(function(data) {
-				if (!Array.isArray(data.history)) return;
-				newsletterHistory = data.history;
-				injectNewsletterSidebar();
+				newsletterHistory = Array.isArray(data.history) ? data.history : [];
+				tryInjectNewsletterSidebar();
 			})
-			.catch(function() {});
+			.catch(function() { tryInjectNewsletterSidebar(); });
+	}
+
+	function tryInjectNewsletterSidebar() {
+		if (document.getElementById('aid-newsletter-section')) return;
+		var inserted = injectNewsletterSidebar();
+		// Retry up to 10× with increasing delay if sidebar not in DOM yet
+		if (!inserted && sidebarRetries < 10) {
+			sidebarRetries++;
+			setTimeout(tryInjectNewsletterSidebar, sidebarRetries * 300);
+		}
+	}
+
+	function findSidebarContainer() {
+		// Try multiple selectors used across FreshRSS versions/themes
+		var candidates = [
+			'#nav_sidebar_categories',
+			'#nav_sidebar nav',
+			'#aside nav',
+			'#aside_feed',
+			'#aside',
+			'aside',
+			'.sidebar-content',
+			'#sidebar',
+		];
+		for (var i = 0; i < candidates.length; i++) {
+			var el = document.querySelector(candidates[i]);
+			if (el) return el;
+		}
+		return null;
 	}
 
 	function injectNewsletterSidebar() {
-		if (!newsletterHistory.length) return;
-		if (document.getElementById('aid-newsletter-section')) return;
+		if (document.getElementById('aid-newsletter-section')) return true;
 
-		var sidebar = document.getElementById('aside_feed') || document.getElementById('aside');
-		if (!sidebar) return;
+		var sidebar = findSidebarContainer();
+		if (!sidebar) return false;
 
 		// Build section mimicking FreshRSS category structure
 		var section = document.createElement('section');
 		section.className = 'category aid-newsletter-section';
 		section.id = 'aid-newsletter-section';
 
-		var unreadCount = newsletterHistory.length;
+		var listItems = newsletterHistory.length
+			? newsletterHistory.map(function(rec, idx) {
+				var d     = new Date(rec.ts * 1000);
+				var label = d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+				return '<li class="feed aid-newsletter-item" data-idx="' + idx + '">'
+					+ '<a href="#" class="aid-newsletter-link">'
+					+ '<span class="aid-nl-count">' + rec.count + ' articles</span>'
+					+ label + '</a></li>';
+			}).join('')
+			: '<li class="feed aid-nl-empty"><span>Aucun digest envoyé pour l\'instant</span></li>';
+
 		section.innerHTML = [
 			'<p class="category-title">',
 			'  <a class="title aid-newsletter-title" href="#" title="Digest envoyés par email">',
 			'    <span class="aid-nl-icon">' + EMAILED_SVG + '</span>',
 			'    Newsletter IA',
-			'    <span class="unread aid-nl-badge">' + unreadCount + '</span>',
+			newsletterHistory.length ? '    <span class="unread aid-nl-badge">' + newsletterHistory.length + '</span>' : '',
 			'  </a>',
 			'</p>',
-			'<ul class="feeds aid-newsletter-list">',
-			newsletterHistory.map(function(rec, idx) {
-				var d = new Date(rec.ts * 1000);
-				var label = d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-				return '<li class="feed aid-newsletter-item" data-idx="' + idx + '">'
-					+ '<a href="#" class="aid-newsletter-link">'
-					+ '<span class="aid-nl-count">' + rec.count + ' articles</span>'
-					+ label
-					+ '</a></li>';
-			}).join(''),
-			'</ul>',
+			'<ul class="feeds aid-newsletter-list">' + listItems + '</ul>',
 		].join('\n');
 
-		// Insert before favorites section, or prepend to sidebar
-		var favorites = sidebar.querySelector('#nav_sidebar_favorites, .category_favorites, [id*="favorite"]');
-		if (favorites) {
+		// Insert before favorites, or at top of sidebar
+		var favorites = null;
+		['#nav_sidebar_favourites', '#nav_sidebar_favorites', '.category_favorites',
+		 '[id*="favorit"]', '[id*="favourite"]', '[class*="favorit"]'].forEach(function(sel) {
+			if (!favorites) favorites = sidebar.querySelector(sel);
+		});
+		if (!favorites) {
+			sidebar.querySelectorAll('section, li').forEach(function(el) {
+				if (!favorites && /favori/i.test(el.textContent.trim().slice(0, 30))) {
+					favorites = el.closest('section') || el;
+				}
+			});
+		}
+		if (favorites && favorites.parentElement === sidebar) {
 			sidebar.insertBefore(section, favorites);
 		} else {
 			sidebar.insertBefore(section, sidebar.firstChild);
 		}
 
-		// Subscription form (append at bottom of section)
+		// ── Event handlers ──────────────────────────────────────────────────
+
+		// Toggle open/close on title click
+		section.querySelector('.aid-newsletter-title').addEventListener('click', function(e) {
+			e.preventDefault();
+			section.classList.toggle('aid-newsletter-open');
+		});
+
+		// Open email content on item click
+		section.querySelectorAll('.aid-newsletter-link').forEach(function(link) {
+			link.addEventListener('click', function(e) {
+				e.preventDefault();
+				var idx = parseInt(this.closest('.aid-newsletter-item').getAttribute('data-idx'), 10);
+				openNewsletterEmail(idx);
+			});
+		});
+
+		// ── Subscription form ───────────────────────────────────────────────
 		var subForm = document.createElement('div');
 		subForm.className = 'aid-subscribe-form';
 		subForm.innerHTML = [
@@ -778,19 +857,7 @@
 				.finally(function() { subForm.querySelector('.aid-subscribe-btn').disabled = false; });
 		});
 
-		// Click handlers
-		section.querySelector('.aid-newsletter-title').addEventListener('click', function(e) {
-			e.preventDefault();
-			section.classList.toggle('aid-newsletter-open');
-		});
-
-		section.querySelectorAll('.aid-newsletter-link').forEach(function(link) {
-			link.addEventListener('click', function(e) {
-				e.preventDefault();
-				var idx = parseInt(this.closest('.aid-newsletter-item').getAttribute('data-idx'), 10);
-				openNewsletterEmail(idx);
-			});
-		});
+		return true;
 	}
 
 	function openNewsletterEmail(idx) {
