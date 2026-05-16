@@ -415,6 +415,188 @@
 		}
 	}
 
+	// ─── Configure page handler ───────────────────────────────────────────────
+	// FreshRSS loads configure.phtml via AJAX and inserts it via innerHTML,
+	// so <script> tags in that file never execute. We use a MutationObserver
+	// to detect when the configure elements appear in the DOM and init them here.
+
+	function initConfigPage(root) {
+		var dataEl = (root || document).getElementById('aid-config-data');
+		if (!dataEl || dataEl.dataset.aidInit === '1') return;
+		dataEl.dataset.aidInit = '1';
+
+		var PROVIDERS = {};
+		var DEFAULT_PROMPT = '';
+		try {
+			PROVIDERS = JSON.parse(dataEl.getAttribute('data-providers') || '{}');
+			DEFAULT_PROMPT = dataEl.getAttribute('data-default-prompt') || '';
+		} catch (e) { /* ignore parse errors */ }
+
+		function gid(id) { return document.getElementById(id); }
+
+		// ── Provider radio cards ───────────────────────────────────────────
+		document.querySelectorAll('input[name="ai_provider"]').forEach(function(radio) {
+			radio.addEventListener('change', function() {
+				var key = this.value;
+				var p = PROVIDERS[key];
+				if (!p) return;
+
+				var keyField = gid('aid-field-key');
+				if (keyField) keyField.style.display = p.needs_key ? '' : 'none';
+
+				var urlInput = gid('aid-api-url');
+				if (urlInput) {
+					urlInput.readOnly = !p.needs_url;
+					if (p.url) urlInput.value = p.url;
+					else if (p.needs_url) urlInput.value = '';
+				}
+
+				var sel = gid('aid-model-select');
+				var modelInput = gid('aid-model');
+				var currentModel = modelInput ? modelInput.value : '';
+				if (sel) {
+					sel.innerHTML = '';
+					(p.models || []).forEach(function(m) {
+						var opt = document.createElement('option');
+						opt.value = m; opt.textContent = m;
+						if (m === currentModel) opt.selected = true;
+						sel.appendChild(opt);
+					});
+					var custom = document.createElement('option');
+					custom.value = '__custom__'; custom.textContent = '-- Saisir un modèle --';
+					sel.appendChild(custom);
+
+					if (p.models.length > 0 && modelInput) {
+						if (p.models.indexOf(currentModel) === -1) {
+							modelInput.value = p.models[0];
+							sel.options[0].selected = true;
+						}
+					}
+				}
+
+				document.querySelectorAll('.adc-provider-card').forEach(function(c) { c.classList.remove('selected'); });
+				var card = this.closest('.adc-provider-card');
+				if (card) card.classList.add('selected');
+			});
+		});
+
+		// ── Model select / text toggle ─────────────────────────────────────
+		var modelSel   = gid('aid-model-select');
+		var modelInput = gid('aid-model');
+		if (modelSel && modelInput) {
+			modelSel.addEventListener('change', function() {
+				if (this.value === '__custom__') {
+					this.style.display = 'none';
+					modelInput.style.display = '';
+					modelInput.focus();
+				} else {
+					modelInput.value = this.value;
+				}
+			});
+			modelInput.addEventListener('blur', function() {
+				if (this.value && modelSel.options.length > 1) {
+					modelSel.style.display = '';
+					this.style.display = 'none';
+				}
+			});
+			if (modelSel.value && modelSel.value !== '__custom__') {
+				modelInput.value = modelSel.value;
+			}
+		}
+
+		// ── Range sliders ──────────────────────────────────────────────────
+		[
+			['aid-temp', 'aid-temp-badge', function(v) { return parseFloat(v).toFixed(1); }],
+			['aid-art',  'aid-art-badge',  function(v) { return v; }],
+			['aid-chr',  'aid-chr-badge',  function(v) { return v; }],
+		].forEach(function(triplet) {
+			var inp = gid(triplet[0]), badge = gid(triplet[1]);
+			if (inp && badge) {
+				inp.addEventListener('input', function() { badge.textContent = triplet[2](this.value); });
+			}
+		});
+
+		// ── Password toggle ────────────────────────────────────────────────
+		var pwdToggle = gid('aid-toggle-pwd');
+		var pwdInput  = gid('aid-api-key');
+		if (pwdToggle && pwdInput) {
+			pwdToggle.addEventListener('click', function() {
+				pwdInput.type = pwdInput.type === 'password' ? 'text' : 'password';
+			});
+		}
+
+		// ── Email section toggle ───────────────────────────────────────────
+		var emailToggle   = gid('aid-email-toggle');
+		var emailSettings = gid('aid-email-settings');
+		if (emailToggle && emailSettings) {
+			emailToggle.addEventListener('change', function() {
+				emailSettings.style.display = this.checked ? '' : 'none';
+			});
+		}
+
+		// ── Reset prompt ───────────────────────────────────────────────────
+		var resetBtn = gid('aid-reset-prompt');
+		if (resetBtn) {
+			resetBtn.addEventListener('click', function() {
+				if (window.confirm('Réinitialiser le prompt par défaut ?')) {
+					var ta = gid('aid-prompt');
+					if (ta) ta.value = DEFAULT_PROMPT;
+				}
+			});
+		}
+
+		// ── Test API connection ────────────────────────────────────────────
+		var testBtn    = gid('aid-test-btn');
+		var testResult = gid('aid-test-result');
+		if (testBtn && testResult) {
+			testBtn.addEventListener('click', function() {
+				var btn = this;
+				btn.disabled = true;
+				testResult.style.display = '';
+				testResult.className = 'adc-test-result';
+				testResult.textContent = 'Test en cours…';
+
+				fetch('/i/?aiDigestAction=testConnection')
+					.then(function(r) { return r.json(); })
+					.then(function(data) {
+						testResult.className = 'adc-test-result ' + (data.success ? 'success' : 'error');
+						testResult.textContent = data.success ? (data.message || 'Connexion réussie !') : (data.error || 'Erreur inconnue');
+						btn.disabled = false;
+					})
+					.catch(function(e) {
+						testResult.className = 'adc-test-result error';
+						testResult.textContent = 'Erreur réseau : ' + e.message;
+						btn.disabled = false;
+					});
+			});
+		}
+
+		// ── Test email ─────────────────────────────────────────────────────
+		var testEmailBtn    = gid('aid-test-email');
+		var testEmailStatus = gid('aid-email-status');
+		if (testEmailBtn && testEmailStatus) {
+			testEmailBtn.addEventListener('click', function() {
+				var btn = this;
+				btn.disabled = true;
+				testEmailStatus.textContent = 'Envoi…';
+				testEmailStatus.className = 'adc-inline-status';
+
+				fetch('/i/?aiDigestAction=emailReport&get=a')
+					.then(function(r) { return r.json(); })
+					.then(function(data) {
+						testEmailStatus.textContent = data.success ? (data.message || 'Envoyé !') : (data.error || 'Erreur');
+						testEmailStatus.className = 'adc-inline-status ' + (data.success ? 'success' : 'error');
+						btn.disabled = false;
+					})
+					.catch(function() {
+						testEmailStatus.textContent = 'Erreur réseau';
+						testEmailStatus.className = 'adc-inline-status error';
+						btn.disabled = false;
+					});
+			});
+		}
+	}
+
 	// ─── Init ─────────────────────────────────────────────────────────────────
 
 	function init() {
@@ -422,11 +604,26 @@
 			document.addEventListener('DOMContentLoaded', function() {
 				wireOrInjectButton();
 				createModal();
+				initConfigPage();
 			});
 		} else {
 			wireOrInjectButton();
 			createModal();
+			initConfigPage();
 		}
+
+		// Watch for configure page being loaded via FreshRSS AJAX
+		var observer = new MutationObserver(function(mutations) {
+			for (var i = 0; i < mutations.length; i++) {
+				var nodes = mutations[i].addedNodes;
+				for (var j = 0; j < nodes.length; j++) {
+					if (nodes[j].nodeType === 1) {
+						initConfigPage(nodes[j].ownerDocument);
+					}
+				}
+			}
+		});
+		observer.observe(document.body || document.documentElement, { childList: true, subtree: true });
 	}
 
 	init();
