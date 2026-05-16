@@ -860,31 +860,6 @@ body.aid-modal-open {
 	vertical-align: middle;
 }
 
-/* List hidden by default, shown when .active (FreshRSS pattern) */
-.aid-newsletter-list {
-	display: none !important;
-}
-
-.aid-newsletter-list.active {
-	display: block !important;
-}
-
-.aid-newsletter-item .aid-newsletter-link {
-	display: flex;
-	align-items: center;
-	gap: 4px;
-	font-size: 12px;
-	line-height: 1.4;
-	/* Override FreshRSS item-title to keep consistent layout */
-	text-decoration: none;
-}
-
-.aid-newsletter-item .aid-newsletter-link .title {
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
 .aid-nl-count {
 	opacity: .6;
 	font-size: 11px;
@@ -1072,6 +1047,16 @@ body.aid-modal-open {
 	/* inherits .flux styles from FreshRSS */
 }
 
+/* Items de la liste des newsletters (vue liste dans #stream) */
+.aid-newsletter-list-item {
+	cursor: pointer;
+	transition: background var(--aid-transition, 0.2s ease);
+}
+
+.aid-newsletter-list-item:hover {
+	background: var(--aid-surface-3, rgba(0, 0, 0, 0.04));
+}
+
 .aid-newsletter-flux .flux_header .aid-nl-stream-close {
 	display: inline-flex;
 	align-items: center;
@@ -1098,11 +1083,6 @@ body.aid-modal-open {
 	background: #fff;
 	/* Allow horizontal scroll if email wider than container */
 	overflow-x: auto;
-}
-
-/* Highlight active newsletter item in sidebar */
-.aid-newsletter-item.active .item-title {
-	font-weight: 700;
 }
 
 /* ─── Newsletter email viewer overlay (fallback / configure page) ───── */

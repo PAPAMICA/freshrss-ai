@@ -752,44 +752,18 @@
 		populateConfigHistory();
 	}
 
-	function buildNewsletterListItems() {
-		if (!newsletterHistory.length) {
-			return '<li class="item aid-nl-empty"><span>Aucun digest envoyé pour l\'instant</span></li>';
-		}
-		return newsletterHistory.map(function(rec, idx) {
-			var d = new Date(rec.ts * 1000);
-			var label = d.toLocaleDateString(undefined, { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
-			return '<li class="item feed aid-newsletter-item" data-idx="' + idx + '">'
-				+ '<a href="#" class="item-title aid-newsletter-link" data-unread="0">'
-				+ '<span class="aid-nl-favicon">' + EMAILED_SVG + '</span>'
-				+ '<span class="title">' + escapeHtml(label) + ' <span class="aid-nl-count">(' + rec.count + ')</span></span>'
-				+ '</a></li>';
-		}).join('');
+function updateNewsletterSidebarList(section) {
+	var titleEl = section.querySelector('.aid-newsletter-title .title');
+	var titleLink = section.querySelector('.aid-newsletter-title');
+	var nlCount = newsletterHistory.length;
+	if (titleEl) {
+		titleEl.textContent = 'Newsletter IA';
+		titleEl.setAttribute('data-unread', nlCount);
 	}
-
-	function updateNewsletterSidebarList(section) {
-		var list = section.querySelector('.aid-newsletter-list');
-		if (list) {
-			list.innerHTML = buildNewsletterListItems();
-			section.querySelectorAll('.aid-newsletter-link').forEach(function(link) {
-				link.addEventListener('click', function(e) {
-					e.preventDefault();
-					var idx = parseInt(this.closest('.aid-newsletter-item').getAttribute('data-idx'), 10);
-					openNewsletterEmail(idx);
-				});
-			});
-		}
-		var titleEl = section.querySelector('.aid-newsletter-title .title');
-		var titleLink = section.querySelector('.aid-newsletter-title');
-		var nlCount = newsletterHistory.length;
-		if (titleEl) {
-			titleEl.textContent = 'Newsletter IA';
-			titleEl.setAttribute('data-unread', nlCount);
-		}
-		if (titleLink) {
-			titleLink.setAttribute('data-unread', nlCount);
-		}
+	if (titleLink) {
+		titleLink.setAttribute('data-unread', nlCount);
 	}
+}
 
 	function isConfigurePage() {
 		return /[?&]c=(configure|extension|auth|user)(&|$)/.test(window.location.search)
@@ -827,14 +801,14 @@
 		section.className = 'tree-folder category aid-newsletter-section';
 		section.id = 'aid-newsletter-section';
 
-		var nlCount = newsletterHistory.length;
+	var nlCount = newsletterHistory.length;
 
-		section.innerHTML = [
-			'<a class="tree-folder-title aid-newsletter-title" href="#" data-unread="' + nlCount + '">',
-			'  <span class="aid-nl-icon">' + EMAILED_SVG + '</span>',
-			'  <span class="title" data-unread="' + nlCount + '">Newsletter IA</span>',
-			'</a>',
-		].join('\n');
+	section.innerHTML = [
+		'<a class="tree-folder-title aid-newsletter-title" href="#" data-unread="' + nlCount + '">',
+		'  <span class="aid-nl-icon">' + EMAILED_SVG + '</span>',
+		'  <span class="title" data-unread="' + nlCount + '">Newsletter IA</span>',
+		'</a>',
+	].join('\n');
 
 		// Insert before li.tree-folder.category.favorites (FreshRSS native favorites item)
 		var favorites = sidebar.querySelector('li.tree-folder.category.favorites')
@@ -853,15 +827,15 @@
 			sidebar.insertBefore(section, firstLi || sidebar.firstChild);
 		}
 
-		// ── Event handlers ──────────────────────────────────────────────────
+	// ── Event handlers ──────────────────────────────────────────────────
 
-		// Display all newsletters in the central stream on title click
-		section.querySelector('.aid-newsletter-title').addEventListener('click', function(e) {
-			e.preventDefault();
-			displayAllNewslettersInStream();
-		});
+	// Click title → affiche la liste dans la zone centrale (#stream)
+	section.querySelector('.aid-newsletter-title').addEventListener('click', function(e) {
+		e.preventDefault();
+		openNewsletterList();
+	});
 
-		// ── Subscription form ───────────────────────────────────────────────
+	// ── Subscription form ───────────────────────────────────────────────
 		var subForm = document.createElement('div');
 		subForm.className = 'aid-subscribe-form';
 		subForm.innerHTML = [
@@ -982,6 +956,76 @@
 			});
 	}
 
+	function openNewsletterList() {
+		var stream = document.getElementById('stream');
+		if (!stream) {
+			showNotification('Zone d\'affichage introuvable.', 'error');
+			return;
+		}
+
+		// Retirer tout contenu newsletter précédent
+		stream.querySelectorAll('.aid-newsletter-flux').forEach(function(el) { el.remove(); });
+
+		// Marquer le sidebar comme actif
+		var section = document.getElementById('aid-newsletter-section');
+		if (section) section.classList.add('active');
+
+		if (!newsletterHistory.length) {
+			var emptyEl = document.createElement('div');
+			emptyEl.className = 'flux aid-newsletter-flux aid-newsletter-list-view';
+			emptyEl.innerHTML = [
+				'<ul class="horizontal-list flux_header websitefull">',
+				'  <li class="item website full">',
+				'    <span class="item-element">',
+				'      <span class="aid-nl-favicon">' + EMAILED_SVG + '</span>',
+				'      <span class="websiteName">Newsletter IA</span>',
+				'    </span>',
+				'  </li>',
+				'</ul>',
+				'<article class="flux_content"><div class="content content_large">',
+				'  <p>Aucun digest envoyé pour l\'instant.</p>',
+				'</div></article>',
+			].join('\n');
+			stream.insertBefore(emptyEl, stream.firstChild);
+			return;
+		}
+
+		// Afficher chaque newsletter comme un faux article flux (du plus récent au plus ancien)
+		var fragment = document.createDocumentFragment();
+		newsletterHistory.forEach(function(rec, idx) {
+			var d = new Date(rec.ts * 1000);
+			var dateStr = d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+			var fluxEl = document.createElement('div');
+			fluxEl.className = 'flux not_read aid-newsletter-flux aid-newsletter-list-item';
+			fluxEl.dataset.idx = String(idx);
+
+			fluxEl.innerHTML = [
+				'<ul class="horizontal-list flux_header websitefull">',
+				'  <li class="item website full">',
+				'    <span class="item-element">',
+				'      <span class="aid-nl-favicon">' + EMAILED_SVG + '</span>',
+				'      <span class="websiteName">Newsletter IA</span>',
+				'    </span>',
+				'  </li>',
+				'  <li class="item titleAuthorSummaryDate">',
+				'    <span class="item-element title">Digest du ' + escapeHtml(dateStr) + '</span>',
+				'    <span class="item-element date"><time>' + rec.count + ' article' + (rec.count > 1 ? 's' : '') + '</time></span>',
+				'  </li>',
+				'</ul>',
+			].join('\n');
+
+			fluxEl.addEventListener('click', function() {
+				openNewsletterEmail(idx);
+			});
+
+			fragment.appendChild(fluxEl);
+		});
+
+		stream.insertBefore(fragment, stream.firstChild);
+		stream.scrollTop = 0;
+	}
+
 	function openNewsletterEmail(idx) {
 		var stream = document.getElementById('stream');
 		if (stream) {
@@ -1063,22 +1107,16 @@
 				}
 			}, 2000);
 
-				// Close button — also clean up the height message listener
-				fluxEl.querySelector('.aid-nl-stream-close').addEventListener('click', function(e) {
-					e.preventDefault();
-					window.removeEventListener('message', onHeightMsg);
-					fluxEl.remove();
-				});
+			// Close button — retour à la liste des newsletters
+			fluxEl.querySelector('.aid-nl-stream-close').addEventListener('click', function(e) {
+				e.preventDefault();
+				window.removeEventListener('message', onHeightMsg);
+				fluxEl.remove();
+				openNewsletterList();
+			});
 
-				// Scroll to the article
-				fluxEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
-				// Mark active in sidebar list
-				document.querySelectorAll('.aid-newsletter-item').forEach(function(li) {
-					li.classList.remove('active');
-				});
-				var activeItem = document.querySelector('.aid-newsletter-item[data-idx="' + idx + '"]');
-				if (activeItem) activeItem.classList.add('active');
+			// Scroll to the article
+			fluxEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
 			})
 			.catch(function() {});
 	}
