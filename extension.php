@@ -105,50 +105,40 @@ Articles:
 
 	public function handleConfigureAction(): void {
 		parent::handleConfigureAction();
-		if (Minz_Request::isPost()) {
-			$provider = Minz_Request::param('ai_provider', 'openai');
-			$apiKey = Minz_Request::param('ai_api_key', '');
-			$apiBaseUrl = Minz_Request::param('ai_api_base_url', '');
-			$model = Minz_Request::param('ai_model', 'gpt-4o-mini');
-			$prompt = Minz_Request::param('ai_prompt', self::DEFAULT_PROMPT);
-			$maxArticles = (int) Minz_Request::param('ai_max_articles', 50);
-			$maxChars = (int) Minz_Request::param('ai_max_chars', 2000);
-			$temperature = (float) Minz_Request::param('ai_temperature', 0.3);
-
-			$emailEnabled = (bool) Minz_Request::param('email_enabled', false);
-			$emailTo = Minz_Request::param('email_to', '');
-			$emailFrom = Minz_Request::param('email_from', '');
-			$emailFromName = Minz_Request::param('email_from_name', 'FreshRSS AI Digest');
-			$emailSchedule = Minz_Request::param('email_schedule', 'never');
-			$emailHour = (int) Minz_Request::param('email_hour', 8);
-			$smtpHost = Minz_Request::param('smtp_host', '');
-			$smtpPort = (int) Minz_Request::param('smtp_port', 587);
-			$smtpUser = Minz_Request::param('smtp_user', '');
-			$smtpPass = Minz_Request::param('smtp_pass', '');
-			$smtpTls = (bool) Minz_Request::param('smtp_tls', true);
-
-			$this->setSystemConfiguration([
-				'provider' => $provider,
-				'api_key' => $apiKey,
-				'api_base_url' => $apiBaseUrl,
-				'model' => $model,
-				'prompt' => $prompt,
-				'max_articles' => min(200, max(1, $maxArticles)),
-				'max_chars' => min(10000, max(100, $maxChars)),
-				'temperature' => min(2.0, max(0.0, $temperature)),
-				'email_enabled' => $emailEnabled,
-				'email_to' => $emailTo,
-				'email_from' => $emailFrom,
-				'email_from_name' => $emailFromName,
-				'email_schedule' => $emailSchedule,
-				'email_hour' => min(23, max(0, $emailHour)),
-				'smtp_host' => $smtpHost,
-				'smtp_port' => $smtpPort,
-				'smtp_user' => $smtpUser,
-				'smtp_pass' => $smtpPass,
-				'smtp_tls' => $smtpTls,
-			]);
+		if (!Minz_Request::isPost()) {
+			return;
 		}
+
+		// Load current config as base so partial saves don't erase other settings
+		$current = $this->getSystemConfiguration();
+		$section = Minz_Request::param('aid_section', 'all');
+
+		if ($section === 'ia' || $section === 'all') {
+			$current['provider']     = (string) Minz_Request::param('ai_provider', $current['provider'] ?? 'openai');
+			$current['api_key']      = (string) Minz_Request::param('ai_api_key', $current['api_key'] ?? '');
+			$current['api_base_url'] = (string) Minz_Request::param('ai_api_base_url', $current['api_base_url'] ?? '');
+			$current['model']        = (string) Minz_Request::param('ai_model', $current['model'] ?? 'gpt-4o-mini');
+			$current['prompt']       = (string) Minz_Request::param('ai_prompt', $current['prompt'] ?? self::DEFAULT_PROMPT);
+			$current['max_articles'] = min(200, max(1, (int) Minz_Request::param('ai_max_articles', $current['max_articles'] ?? 50)));
+			$current['max_chars']    = min(10000, max(100, (int) Minz_Request::param('ai_max_chars', $current['max_chars'] ?? 2000)));
+			$current['temperature']  = min(2.0, max(0.0, (float) Minz_Request::param('ai_temperature', $current['temperature'] ?? 0.3)));
+		}
+
+		if ($section === 'mail' || $section === 'all') {
+			$current['email_enabled']   = Minz_Request::param('email_enabled') === '1';
+			$current['email_to']        = (string) Minz_Request::param('email_to', $current['email_to'] ?? '');
+			$current['email_from']      = (string) Minz_Request::param('email_from', $current['email_from'] ?? '');
+			$current['email_from_name'] = (string) Minz_Request::param('email_from_name', $current['email_from_name'] ?? 'FreshRSS AI Digest');
+			$current['email_schedule']  = (string) Minz_Request::param('email_schedule', $current['email_schedule'] ?? 'never');
+			$current['email_hour']      = min(23, max(0, (int) Minz_Request::param('email_hour', $current['email_hour'] ?? 8)));
+			$current['smtp_host']       = (string) Minz_Request::param('smtp_host', $current['smtp_host'] ?? '');
+			$current['smtp_port']       = (int) Minz_Request::param('smtp_port', $current['smtp_port'] ?? 587);
+			$current['smtp_user']       = (string) Minz_Request::param('smtp_user', $current['smtp_user'] ?? '');
+			$current['smtp_pass']       = (string) Minz_Request::param('smtp_pass', $current['smtp_pass'] ?? '');
+			$current['smtp_tls']        = Minz_Request::param('smtp_tls') === '1';
+		}
+
+		$this->setSystemConfiguration($current);
 	}
 
 	// ─── Configuration helpers ─────────────────────────────────────────────────

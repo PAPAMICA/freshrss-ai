@@ -31,71 +31,46 @@ Articles:
 {{ARTICLES}}';
 
 $providers = [
-	'openai'    => ['label' => 'OpenAI',            'url' => 'https://api.openai.com/v1',  'models' => ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'], 'needs_key' => true,  'needs_url' => false],
-	'anthropic' => ['label' => 'Anthropic Claude',  'url' => 'https://api.anthropic.com',  'models' => ['claude-3-5-haiku-20241022', 'claude-opus-4-5', 'claude-sonnet-4-5', 'claude-3-5-sonnet-20241022'], 'needs_key' => true, 'needs_url' => false],
-	'mistral'   => ['label' => 'Mistral AI',        'url' => 'https://api.mistral.ai/v1',  'models' => ['mistral-small-latest', 'mistral-large-latest', 'open-mistral-7b'], 'needs_key' => true, 'needs_url' => false],
-	'ollama'    => ['label' => 'Ollama (local)',     'url' => 'http://localhost:11434',     'models' => ['llama3.2', 'llama3.1', 'mistral', 'gemma2', 'qwen2.5', 'phi3'], 'needs_key' => false, 'needs_url' => true],
-	'custom'    => ['label' => 'Compatible OpenAI', 'url' => '',                           'models' => [], 'needs_key' => true, 'needs_url' => true],
+	'openai'    => ['label' => 'OpenAI',            'url' => 'https://api.openai.com/v1', 'models' => ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4-turbo'], 'needs_key' => true,  'needs_url' => false],
+	'anthropic' => ['label' => 'Anthropic Claude',  'url' => 'https://api.anthropic.com', 'models' => ['claude-3-5-haiku-20241022', 'claude-opus-4-5', 'claude-sonnet-4-5', 'claude-3-5-sonnet-20241022'], 'needs_key' => true, 'needs_url' => false],
+	'mistral'   => ['label' => 'Mistral AI',        'url' => 'https://api.mistral.ai/v1', 'models' => ['mistral-small-latest', 'mistral-large-latest', 'open-mistral-7b'], 'needs_key' => true, 'needs_url' => false],
+	'ollama'    => ['label' => 'Ollama (local)',     'url' => 'http://localhost:11434',    'models' => ['llama3.2', 'llama3.1', 'mistral', 'gemma2', 'qwen2.5', 'phi3'], 'needs_key' => false, 'needs_url' => true],
+	'custom'    => ['label' => 'Compatible OpenAI', 'url' => '',                          'models' => [], 'needs_key' => true, 'needs_url' => true],
 ];
 
 $currentProvider = (string)$cfg('provider', 'openai');
 $currentModel    = (string)$cfg('model', 'gpt-4o-mini');
 
-// FreshRSS uses parameter 'e' to identify the extension in configure action.
-// When loaded via AJAX (ajax=1), the form action must also include ajax=1 so that after
-// saving, FreshRSS re-renders only the panel content (not the full page layout).
-$formAction = '?c=extension&a=configure&e=' . urlencode($this->getName());
+// Generate CSRF token — supports both current (_csrf) and legacy (token) FreshRSS mechanisms
+$csrf  = method_exists('FreshRSS_Auth', 'csrfToken') ? FreshRSS_Auth::csrfToken() : '';
+$token = (string)Minz_Session::param('token', '');
+
+// FreshRSS uses 'e' (not 'ext_name') as extension param.
+// Keep ajax=1 when loaded in slider mode so FreshRSS renders only the panel after saving.
+$baseAction = '?c=extension&a=configure&e=' . urlencode($this->getName());
 if (Minz_Request::paramBoolean('ajax')) {
-	$formAction .= '&ajax=1';
+	$baseAction .= '&ajax=1';
 }
+
+// CSS helper: add aid-hidden class when a condition is false
+$hide = fn(bool $show): string => $show ? '' : ' aid-hidden';
 ?>
 
-<style>
-.aid-cfg { max-width: 720px }
-.aid-cfg section { margin-bottom: 1.5em }
-.aid-cfg section > h3 { font-size: 1em; font-weight: bold; border-bottom: 1px solid var(--color-border, #ddd); padding-bottom: .3em; margin-bottom: .8em }
-.aid-cfg .aid-row { display: flex; flex-direction: column; gap: .3em; margin-bottom: .8em }
-.aid-cfg label { font-size: .9em; font-weight: 600; color: var(--color-secondary, #555) }
-.aid-cfg input[type="text"],
-.aid-cfg input[type="url"],
-.aid-cfg input[type="email"],
-.aid-cfg input[type="number"],
-.aid-cfg input[type="password"],
-.aid-cfg select,
-.aid-cfg textarea { width: 100%; max-width: 100%; box-sizing: border-box }
-.aid-cfg .aid-hint { font-size: .8em; color: var(--color-secondary, #888); margin: .2em 0 0 }
-.aid-cfg .aid-hint code { background: var(--color-background-alt, #f4f4f4); padding: 0 4px; border-radius: 3px }
-.aid-cfg .aid-row-inline { flex-direction: row; align-items: center; gap: .6em; flex-wrap: wrap }
-.aid-cfg .aid-pwd-wrap { display: flex; gap: .4em }
-.aid-cfg .aid-pwd-wrap input { flex: 1 }
-.aid-cfg .aid-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: .8em }
-.aid-cfg .aid-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .8em }
-.aid-cfg .aid-range-row { display: flex; align-items: center; gap: .6em }
-.aid-cfg .aid-range-row input[type=range] { flex: 1 }
-.aid-cfg .aid-badge { display: inline-block; background: var(--color-primary, #0060df); color: #fff; border-radius: 3px; padding: 0 5px; font-size: .8em; min-width: 2.5em; text-align: center }
-.aid-cfg .aid-test-result { margin-top: .5em; padding: .5em .8em; border-radius: 3px; font-size: .85em }
-.aid-cfg .aid-test-result.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb }
-.aid-cfg .aid-test-result.error   { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb }
-.aid-cfg .aid-subsection { margin-top: .6em; padding: .8em; border: 1px solid var(--color-border, #ddd); border-radius: 4px; background: var(--color-background-alt, #fafafa) }
-.aid-cfg .aid-subsection h4 { font-size: .9em; font-weight: bold; margin: 0 0 .6em }
-.aid-cfg .aid-status { font-size: .85em; margin-left: .4em }
-.aid-cfg .aid-status.success { color: #155724 }
-.aid-cfg .aid-status.error   { color: #721c24 }
-.aid-cfg .aid-actions { margin-top: 1em; display: flex; gap: .5em; align-items: center }
-@media (max-width: 500px) {
-	.aid-cfg .aid-grid-2,
-	.aid-cfg .aid-grid-3 { grid-template-columns: 1fr }
-}
-</style>
-
 <div class="aid-cfg">
-<form method="post" action="<?= htmlspecialchars($formAction) ?>" class="adc-form">
 
-	<!-- ── Fournisseur IA ──────────────────────────────────────────── -->
+<!-- ══════════════════════════════════════════════════════════════
+     FORMULAIRE 1 — Configuration IA
+     ══════════════════════════════════════════════════════════════ -->
+<form method="post" action="<?= htmlspecialchars($baseAction) ?>">
+	<input type="hidden" name="_csrf"       value="<?= htmlspecialchars($csrf) ?>">
+	<input type="hidden" name="token"       value="<?= htmlspecialchars($token) ?>">
+	<input type="hidden" name="aid_section" value="ia">
+
 	<section>
-		<h3>Fournisseur IA</h3>
+		<h3>Configuration IA</h3>
 
-		<div class="aid-row">
+		<!-- Fournisseur -->
+		<div class="aid-field">
 			<label for="aid-provider">Fournisseur</label>
 			<select id="aid-provider" name="ai_provider">
 				<?php foreach ($providers as $key => $p): ?>
@@ -104,175 +79,218 @@ if (Minz_Request::paramBoolean('ajax')) {
 			</select>
 		</div>
 
-		<div class="aid-row" id="aid-field-key" style="<?= $providers[$currentProvider]['needs_key'] ? '' : 'display:none' ?>">
+		<!-- Clé API -->
+		<div class="aid-field<?= $hide($providers[$currentProvider]['needs_key']) ?>" id="aid-field-key">
 			<label for="aid-api-key">Clé API</label>
-			<div class="aid-pwd-wrap">
+			<div class="aid-inline">
 				<input type="password" id="aid-api-key" name="ai_api_key"
 					value="<?= htmlspecialchars((string)$cfg('api_key')) ?>"
-					placeholder="sk-…"
-					autocomplete="new-password">
+					placeholder="sk-…" autocomplete="new-password">
 				<button type="button" id="aid-toggle-pwd" class="btn">Afficher</button>
 			</div>
 		</div>
 
-		<div class="aid-row">
+		<!-- URL API -->
+		<div class="aid-field">
 			<label for="aid-api-url">URL de base de l'API</label>
 			<input type="url" id="aid-api-url" name="ai_api_base_url"
 				value="<?= htmlspecialchars((string)$cfg('api_base_url', $providers[$currentProvider]['url'])) ?>"
 				placeholder="https://api.openai.com/v1"
 				<?= !$providers[$currentProvider]['needs_url'] ? 'readonly' : '' ?>>
-			<p class="aid-hint">Rempli automatiquement. Modifiable pour un endpoint personnalisé.</p>
+			<p class="aid-hint">Rempli automatiquement selon le fournisseur. Modifiable pour un endpoint personnalisé.</p>
 		</div>
 
-		<div class="aid-row">
+		<!-- Modèle + bouton test -->
+		<div class="aid-field">
 			<label for="aid-model-select">Modèle</label>
-			<div class="aid-row-inline">
-				<select id="aid-model-select" style="flex:1">
+			<div class="aid-inline">
+				<select id="aid-model-select">
 					<?php
 					$modelsList = $providers[$currentProvider]['models'];
 					foreach ($modelsList as $m): ?>
 					<option value="<?= htmlspecialchars($m) ?>" <?= $currentModel === $m ? 'selected' : '' ?>><?= htmlspecialchars($m) ?></option>
 					<?php endforeach; ?>
-					<?php if (!in_array($currentModel, $modelsList, true) && !empty($currentModel)): ?>
+					<?php if (!in_array($currentModel, $modelsList, true) && $currentModel !== ''): ?>
 					<option value="<?= htmlspecialchars($currentModel) ?>" selected><?= htmlspecialchars($currentModel) ?></option>
 					<?php endif; ?>
-					<option value="__custom__">— Saisir un modèle —</option>
+					<option value="__custom__">— Autre modèle —</option>
 				</select>
 				<input type="text" id="aid-model" name="ai_model"
 					value="<?= htmlspecialchars($currentModel) ?>"
 					placeholder="Nom du modèle"
-					style="flex:1;display:none">
-				<button type="button" id="aid-test-btn" class="btn">Tester la connexion</button>
+					class="aid-hidden">
+				<button type="button" id="aid-test-btn" class="btn">Tester</button>
 			</div>
-			<div id="aid-test-result" class="aid-test-result" style="display:none"></div>
+			<div id="aid-test-result" class="aid-test-result aid-hidden"></div>
 		</div>
 
-		<div class="aid-grid-3">
-			<div class="aid-row">
-				<label for="aid-temp">Température — <span class="aid-badge" id="aid-temp-badge"><?= number_format((float)$cfg('temperature', 0.3), 1) ?></span></label>
-				<div class="aid-range-row">
-					<input type="range" id="aid-temp" name="ai_temperature" min="0" max="2" step="0.1" value="<?= htmlspecialchars((string)$cfg('temperature', '0.3')) ?>">
+		<!-- Sliders -->
+		<div class="aid-cols-3">
+			<div class="aid-field">
+				<label>Température &nbsp;<span class="aid-badge" id="aid-temp-badge"><?= number_format((float)$cfg('temperature', 0.3), 1) ?></span></label>
+				<div class="aid-slider-wrap">
+					<input type="range" id="aid-temp" name="ai_temperature"
+						min="0" max="2" step="0.1"
+						value="<?= htmlspecialchars((string)$cfg('temperature', '0.3')) ?>">
 				</div>
-				<p class="aid-hint">0 = déterministe · 2 = créatif</p>
+				<p class="aid-hint">0 = précis · 2 = créatif</p>
 			</div>
-			<div class="aid-row">
-				<label for="aid-art">Articles max — <span class="aid-badge" id="aid-art-badge"><?= (int)$cfg('max_articles', 50) ?></span></label>
-				<div class="aid-range-row">
-					<input type="range" id="aid-art" name="ai_max_articles" min="5" max="200" step="5" value="<?= (int)$cfg('max_articles', 50) ?>">
+			<div class="aid-field">
+				<label>Articles max &nbsp;<span class="aid-badge" id="aid-art-badge"><?= (int)$cfg('max_articles', 50) ?></span></label>
+				<div class="aid-slider-wrap">
+					<input type="range" id="aid-art" name="ai_max_articles"
+						min="5" max="200" step="5"
+						value="<?= (int)$cfg('max_articles', 50) ?>">
 				</div>
-				<p class="aid-hint">Articles envoyés à l'IA</p>
+				<p class="aid-hint">Nb d'articles envoyés</p>
 			</div>
-			<div class="aid-row">
-				<label for="aid-chr">Caractères/article — <span class="aid-badge" id="aid-chr-badge"><?= (int)$cfg('max_chars', 2000) ?></span></label>
-				<div class="aid-range-row">
-					<input type="range" id="aid-chr" name="ai_max_chars" min="200" max="10000" step="100" value="<?= (int)$cfg('max_chars', 2000) ?>">
+			<div class="aid-field">
+				<label>Chars/article &nbsp;<span class="aid-badge" id="aid-chr-badge"><?= (int)$cfg('max_chars', 2000) ?></span></label>
+				<div class="aid-slider-wrap">
+					<input type="range" id="aid-chr" name="ai_max_chars"
+						min="200" max="10000" step="100"
+						value="<?= (int)$cfg('max_chars', 2000) ?>">
 				</div>
-				<p class="aid-hint">Taille max par article</p>
+				<p class="aid-hint">Taille max/article</p>
 			</div>
 		</div>
-	</section>
 
-	<!-- ── Prompt ─────────────────────────────────────────────────── -->
-	<section>
-		<h3>Prompt système</h3>
-		<div class="aid-row">
+		<!-- Prompt -->
+		<div class="aid-field">
 			<label for="aid-prompt">
-				Instruction donnée à l'IA
-				<button type="button" id="aid-reset-prompt" class="btn" style="margin-left:.5em;font-size:.8em">Réinitialiser</button>
+				Prompt système
+				<button type="button" id="aid-reset-prompt" class="btn aid-btn-sm">Réinitialiser</button>
 			</label>
-			<p class="aid-hint">Utilisez <code>{{ARTICLES}}</code> comme emplacement pour les articles.</p>
-			<textarea id="aid-prompt" name="ai_prompt" rows="16"><?= htmlspecialchars((string)$cfg('prompt', $defaultPrompt)) ?></textarea>
+			<p class="aid-hint">Utilisez <code>{{ARTICLES}}</code> pour l'emplacement des articles.</p>
+			<textarea id="aid-prompt" name="ai_prompt" rows="14"><?= htmlspecialchars((string)$cfg('prompt', $defaultPrompt)) ?></textarea>
+		</div>
+
+		<div class="aid-actions">
+			<button type="submit" class="btn important">Enregistrer la configuration IA</button>
 		</div>
 	</section>
+</form>
 
-	<!-- ── Rapport email ──────────────────────────────────────────── -->
+<!-- ══════════════════════════════════════════════════════════════
+     FORMULAIRE 2 — Rapport email
+     ══════════════════════════════════════════════════════════════ -->
+<form method="post" action="<?= htmlspecialchars($baseAction) ?>">
+	<input type="hidden" name="_csrf"       value="<?= htmlspecialchars($csrf) ?>">
+	<input type="hidden" name="token"       value="<?= htmlspecialchars($token) ?>">
+	<input type="hidden" name="aid_section" value="mail">
+
 	<section>
 		<h3>
 			Rapport par email
-			<label style="font-size:.85em;font-weight:normal;margin-left:.8em;cursor:pointer">
-				<input type="checkbox" name="email_enabled" value="1" id="aid-email-toggle" <?= $cfg('email_enabled', false) ? 'checked' : '' ?>>
+			<label class="aid-toggle-label">
+				<input type="checkbox" name="email_enabled" value="1" id="aid-email-toggle"
+					<?= $cfg('email_enabled', false) ? 'checked' : '' ?>>
 				Activer
 			</label>
 		</h3>
 
-		<div id="aid-email-settings" style="<?= $cfg('email_enabled', false) ? '' : 'display:none' ?>">
-			<div class="aid-grid-3">
-				<div class="aid-row">
-					<label for="aid-email-to">Destinataire</label>
-					<input type="email" id="aid-email-to" name="email_to" value="<?= htmlspecialchars((string)$cfg('email_to')) ?>" placeholder="vous@exemple.com">
+		<div id="aid-email-settings" class="<?= $cfg('email_enabled', false) ? '' : 'aid-hidden' ?>">
+
+			<div class="aid-cols-2">
+				<div class="aid-field">
+					<label for="aid-email-to">Email destinataire</label>
+					<input type="email" id="aid-email-to" name="email_to"
+						value="<?= htmlspecialchars((string)$cfg('email_to')) ?>"
+						placeholder="vous@exemple.com">
 				</div>
-				<div class="aid-row">
-					<label for="aid-email-from">Expéditeur</label>
-					<input type="email" id="aid-email-from" name="email_from" value="<?= htmlspecialchars((string)$cfg('email_from')) ?>" placeholder="freshrss@exemple.com">
-				</div>
-				<div class="aid-row">
-					<label for="aid-email-name">Nom expéditeur</label>
-					<input type="text" id="aid-email-name" name="email_from_name" value="<?= htmlspecialchars((string)$cfg('email_from_name', 'FreshRSS AI Digest')) ?>">
+				<div class="aid-field">
+					<label for="aid-email-from">Email expéditeur</label>
+					<input type="email" id="aid-email-from" name="email_from"
+						value="<?= htmlspecialchars((string)$cfg('email_from')) ?>"
+						placeholder="freshrss@exemple.com">
 				</div>
 			</div>
-			<div class="aid-grid-2">
-				<div class="aid-row">
-					<label for="aid-schedule">Envoi automatique</label>
+
+			<div class="aid-cols-2">
+				<div class="aid-field">
+					<label for="aid-email-name">Nom expéditeur</label>
+					<input type="text" id="aid-email-name" name="email_from_name"
+						value="<?= htmlspecialchars((string)$cfg('email_from_name', 'FreshRSS AI Digest')) ?>">
+				</div>
+				<div class="aid-field">
+					<label for="aid-schedule">Fréquence</label>
 					<select id="aid-schedule" name="email_schedule">
-						<option value="never" <?= $cfg('email_schedule') === 'never' ? 'selected' : '' ?>>Désactivé</option>
-						<option value="daily" <?= $cfg('email_schedule') === 'daily' ? 'selected' : '' ?>>Quotidien</option>
+						<option value="never"  <?= $cfg('email_schedule') === 'never'  ? 'selected' : '' ?>>Désactivé</option>
+						<option value="daily"  <?= $cfg('email_schedule') === 'daily'  ? 'selected' : '' ?>>Quotidien</option>
 						<option value="weekly" <?= $cfg('email_schedule') === 'weekly' ? 'selected' : '' ?>>Hebdomadaire (lundi)</option>
 					</select>
 				</div>
-				<div class="aid-row">
-					<label for="aid-hour">Heure d'envoi (0–23)</label>
-					<input type="number" id="aid-hour" name="email_hour" min="0" max="23" value="<?= (int)$cfg('email_hour', 8) ?>" style="max-width:80px">
-				</div>
 			</div>
 
-			<div class="aid-subsection">
-				<h4>Configuration SMTP <small style="font-weight:normal">(optionnel — laissez vide pour utiliser <code>mail()</code>)</small></h4>
-				<div class="aid-grid-3">
-					<div class="aid-row">
-						<label for="aid-smtp-host">Hôte SMTP</label>
-						<input type="text" id="aid-smtp-host" name="smtp_host" value="<?= htmlspecialchars((string)$cfg('smtp_host')) ?>" placeholder="smtp.gmail.com">
+			<div class="aid-field aid-field--narrow">
+				<label for="aid-hour">Heure d'envoi</label>
+				<input type="number" id="aid-hour" name="email_hour"
+					min="0" max="23"
+					value="<?= (int)$cfg('email_hour', 8) ?>">
+				<p class="aid-hint">0 – 23 h</p>
+			</div>
+
+			<!-- SMTP -->
+			<div class="aid-box">
+				<h4>SMTP <small>(optionnel — laissez vide pour utiliser <code>mail()</code>)</small></h4>
+				<div class="aid-cols-3">
+					<div class="aid-field">
+						<label for="aid-smtp-host">Hôte</label>
+						<input type="text" id="aid-smtp-host" name="smtp_host"
+							value="<?= htmlspecialchars((string)$cfg('smtp_host')) ?>"
+							placeholder="smtp.gmail.com">
 					</div>
-					<div class="aid-row">
+					<div class="aid-field">
 						<label for="aid-smtp-port">Port</label>
-						<input type="number" id="aid-smtp-port" name="smtp_port" value="<?= (int)$cfg('smtp_port', 587) ?>" style="max-width:80px">
+						<input type="number" id="aid-smtp-port" name="smtp_port"
+							value="<?= (int)$cfg('smtp_port', 587) ?>">
 					</div>
-					<div class="aid-row">
+					<div class="aid-field">
 						<label for="aid-smtp-user">Utilisateur</label>
-						<input type="text" id="aid-smtp-user" name="smtp_user" value="<?= htmlspecialchars((string)$cfg('smtp_user')) ?>">
+						<input type="text" id="aid-smtp-user" name="smtp_user"
+							value="<?= htmlspecialchars((string)$cfg('smtp_user')) ?>">
 					</div>
 				</div>
-				<div class="aid-row" style="max-width:300px">
-					<label for="aid-smtp-pass">Mot de passe SMTP</label>
-					<input type="password" id="aid-smtp-pass" name="smtp_pass" value="<?= htmlspecialchars((string)$cfg('smtp_pass')) ?>" autocomplete="new-password">
+				<div class="aid-cols-2">
+					<div class="aid-field">
+						<label for="aid-smtp-pass">Mot de passe</label>
+						<input type="password" id="aid-smtp-pass" name="smtp_pass"
+							value="<?= htmlspecialchars((string)$cfg('smtp_pass')) ?>"
+							autocomplete="new-password">
+					</div>
+					<div class="aid-field aid-check-row">
+						<label>
+							<input type="checkbox" name="smtp_tls" value="1" <?= $cfg('smtp_tls', true) ? 'checked' : '' ?>>
+							Activer TLS / STARTTLS
+						</label>
+					</div>
 				</div>
-				<label style="cursor:pointer">
-					<input type="checkbox" name="smtp_tls" value="1" <?= $cfg('smtp_tls', true) ? 'checked' : '' ?>>
-					Activer TLS/STARTTLS
-				</label>
 			</div>
 
+			<!-- Cron -->
+			<div class="aid-box">
+				<h4>Envoi automatique (cron)</h4>
+				<p class="aid-hint">Ajoutez cette ligne à votre crontab (<code>crontab -e</code>) :</p>
+				<code class="aid-cron-code">0 <?= (int)$cfg('email_hour', 8) ?> * * * www-data php /var/www/FreshRSS/extensions/xExtension-AIDigest/cron.php &gt;&gt; /var/log/freshrss-ai-digest.log 2&gt;&amp;1</code>
+			</div>
+
+			<!-- Test email -->
 			<div class="aid-actions">
 				<button type="button" id="aid-test-email" class="btn">Envoyer un email de test</button>
 				<span id="aid-email-status" class="aid-status"></span>
 			</div>
+		</div>
 
-			<div class="aid-subsection" style="margin-top:.8em">
-				<h4>Cron — envoi automatique</h4>
-				<p class="aid-hint">Ajoutez cette ligne à votre crontab (<code>crontab -e</code>) :</p>
-				<code style="display:block;margin-top:.4em;word-break:break-all">0 <?= (int)$cfg('email_hour', 8) ?> * * * www-data php /var/www/FreshRSS/extensions/xExtension-AIDigest/cron.php &gt;&gt; /var/log/freshrss-ai-digest.log 2&gt;&amp;1</code>
-			</div>
+		<div class="aid-actions">
+			<button type="submit" class="btn important">Enregistrer la configuration email</button>
 		</div>
 	</section>
-
-	<div class="aid-actions">
-		<button type="submit" class="btn important">Enregistrer</button>
-	</div>
-
 </form>
+
 </div>
 
-<!-- Données PHP pour summary.js (survit à l'insertion innerHTML via AJAX) -->
+<!-- Données PHP pour summary.js (survit à l'insertion innerHTML via AJAX FreshRSS) -->
 <div id="aid-config-data"
 	data-providers="<?= htmlspecialchars(json_encode(array_map(fn($p) => ['url' => $p['url'], 'models' => $p['models'], 'needs_key' => $p['needs_key'], 'needs_url' => $p['needs_url']], $providers), JSON_UNESCAPED_UNICODE), ENT_QUOTES) ?>"
 	data-default-prompt="<?= htmlspecialchars($defaultPrompt, ENT_QUOTES) ?>"
-	style="display:none" aria-hidden="true"></div>
+	class="aid-hidden" aria-hidden="true"></div>

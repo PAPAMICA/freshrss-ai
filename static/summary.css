@@ -587,7 +587,115 @@ body.aid-modal-open {
 	color: white;
 }
 
-/* ═══ CONFIGURATION PAGE ════════════════════════════════════════════ */
+/* ═══ CONFIGURE PAGE (native FreshRSS theme) ════════════════════════ */
+
+/* Utility */
+.aid-hidden { display: none !important }
+
+/* Wrapper */
+.aid-cfg { max-width: 680px; padding-bottom: 1.5em }
+.aid-cfg section { margin-bottom: 2em }
+.aid-cfg h3 {
+	font-size: 1.05em;
+	font-weight: 700;
+	margin: 0 0 1em;
+	padding-bottom: .4em;
+	border-bottom: 2px solid var(--color-accent, #0060df);
+}
+.aid-cfg fieldset { border: none; margin: 0 0 1em; padding: 0 }
+.aid-cfg fieldset legend { font-size: .85em; font-weight: 600; color: var(--color-secondary, #666); margin-bottom: .5em; padding: 0 }
+
+/* Fields */
+.aid-field { margin-bottom: .9em }
+.aid-field label { display: block; font-size: .85em; font-weight: 600; color: var(--color-secondary, #555); margin-bottom: .3em }
+.aid-field input[type="text"],
+.aid-field input[type="url"],
+.aid-field input[type="email"],
+.aid-field input[type="number"],
+.aid-field input[type="password"],
+.aid-field select,
+.aid-field textarea { width: 100%; box-sizing: border-box }
+.aid-hint { font-size: .78em; color: var(--color-secondary, #888); margin: .25em 0 0 }
+.aid-hint code { background: var(--color-background-alt, #f0f0f0); padding: 1px 4px; border-radius: 3px; font-size: .95em }
+
+/* Grids */
+.aid-cols-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 0 1.2em }
+.aid-cols-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 0 1em }
+
+/* Inline row (input + button side by side) */
+.aid-inline { display: flex; gap: .4em; align-items: center }
+.aid-inline input, .aid-inline select { flex: 1; min-width: 0 }
+.aid-inline .btn { flex-shrink: 0; white-space: nowrap }
+
+/* Slider */
+.aid-slider-wrap { display: flex; align-items: center; gap: .6em }
+.aid-slider-wrap input[type=range] { flex: 1 }
+
+/* Value badge on sliders */
+.aid-badge {
+	display: inline-block;
+	min-width: 2.8em;
+	text-align: center;
+	padding: 0 .4em;
+	border-radius: 3px;
+	font-size: .8em;
+	font-weight: 700;
+	background: var(--color-accent, #0060df);
+	color: #fff;
+}
+
+/* Test-connection result */
+.aid-test-result {
+	margin-top: .5em;
+	padding: .5em .75em;
+	border-radius: 4px;
+	font-size: .82em;
+	line-height: 1.4;
+}
+.aid-test-result.ok  { background:#d4edda; color:#155724; border:1px solid #c3e6cb }
+.aid-test-result.err { background:#f8d7da; color:#721c24; border:1px solid #f5c6cb }
+
+/* SMTP / cron sub-boxes */
+.aid-box {
+	background: var(--color-background-alt, #f8f8f8);
+	border: 1px solid var(--color-border, #ddd);
+	border-radius: 4px;
+	padding: .9em 1em;
+	margin-bottom: .9em;
+}
+.aid-box h4 { font-size: .9em; font-weight: 700; margin: 0 0 .7em }
+
+/* Email test status */
+.aid-status { font-size: .82em; margin-left: .4em }
+.aid-status.ok  { color: #155724 }
+.aid-status.err { color: #721c24 }
+
+/* Action row */
+.aid-actions { display: flex; gap: .5em; align-items: center; margin-top: 1em }
+
+/* Email section toggle label */
+.aid-toggle-label { display: inline-flex; align-items: center; gap: .4em; font-size: .85em; font-weight: normal; margin-left: .8em; vertical-align: middle; cursor: pointer }
+
+/* Narrow field (e.g. hour picker) */
+.aid-field--narrow { max-width: 140px }
+
+/* TLS checkbox row */
+.aid-check-row { display: flex; align-items: flex-end; padding-bottom: .2em }
+.aid-check-row label { display: flex; align-items: center; gap: .4em; font-weight: normal; cursor: pointer }
+
+/* Cron code block */
+.aid-cron-code { display: block; word-break: break-all; font-size: .8em; margin-top: .4em }
+
+/* Small inline button (reset prompt) */
+.aid-btn-sm { font-size: .78em; padding: 1px 8px; margin-left: .5em; vertical-align: middle }
+
+@media (max-width: 520px) {
+	.aid-cols-2, .aid-cols-3 { grid-template-columns: 1fr }
+}
+
+/* ════════════════════════════════════════════════════════════════════
+   Legacy configure page classes (kept for backward compat)
+   ════════════════════════════════════════════════════════════════════ */
 
 .ai-digest-config {
 	font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
