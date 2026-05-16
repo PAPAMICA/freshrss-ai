@@ -33,8 +33,8 @@ Articles:
 		$this->registerHook('freshrss_init', [$this, 'onFreshRSSInit']);
 		$this->registerHook('nav_menu', [$this, 'renderNavButton']);
 
-		Minz_View::appendStyle($this->getFileUrl('summary.css'));
-		Minz_View::appendScript($this->getFileUrl('summary.js'));
+		Minz_View::appendStyle($this->getFileUrl('summary.css', 'css'));
+		Minz_View::appendScript($this->getFileUrl('summary.js', 'js'));
 
 		// Allow external CDN for marked.js (Markdown renderer)
 		$this->csp_policies['script-src'] = "'self' https://cdn.jsdelivr.net";
