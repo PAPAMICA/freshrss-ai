@@ -152,6 +152,27 @@ Articles:
 				echo json_encode(['error' => 'Introuvable'], JSON_UNESCAPED_UNICODE);
 			}
 			break;
+		case 'emailRender':
+			$idx = (int) Minz_Request::param('idx', 0);
+			$history = $this->getEmailHistory();
+			if (!isset($history[$idx])) {
+				http_response_code(404);
+				exit;
+			}
+			// Serve the email HTML directly with a permissive CSP so inline styles/scripts render correctly
+			header('Content-Type: text/html; charset=UTF-8', true);
+			header("Content-Security-Policy: default-src * 'unsafe-inline' 'unsafe-eval' data: blob:", true);
+			$html = $history[$idx]['html'];
+			// Inject postMessage height reporter so the parent can auto-size the iframe
+			$heightScript = '<script>'
+				. 'function aid_reportH(){'
+				. '  var h=Math.max(document.documentElement.scrollHeight,document.body?document.body.scrollHeight:0);'
+				. '  parent.postMessage({type:"aid-nl-height",h:h},"*");'
+				. '}'
+				. 'window.addEventListener("load",function(){aid_reportH();setTimeout(aid_reportH,500);setTimeout(aid_reportH,1500);});'
+				. '</script>';
+			echo str_replace('</body>', $heightScript . '</body>', $html);
+			exit;
 		default:
 			echo json_encode(['error' => 'Action inconnue'], JSON_UNESCAPED_UNICODE);
 		}

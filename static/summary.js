@@ -1026,24 +1026,14 @@
 			var bodyDiv = fluxEl.querySelector('.aid-nl-stream-body');
 			var iframe = document.createElement('iframe');
 			iframe.className = 'aid-nl-stream-iframe';
-			// allow-scripts: needed for email CSS/fonts to apply; allow-popups for links
+			// allow-scripts: runs the postMessage height reporter; allow-popups: opens links
+			// No allow-same-origin: prevents iframe content from accessing parent cookies/DOM
 			iframe.setAttribute('sandbox', 'allow-scripts allow-popups');
 			bodyDiv.appendChild(iframe);
 
-			// Inject a postMessage height reporter into the email HTML
-			var heightScript = '<script>' +
-				'function reportHeight(){' +
-				'  var h=Math.max(document.documentElement.scrollHeight,document.body?document.body.scrollHeight:0);' +
-				'  parent.postMessage({type:"aid-nl-height",h:h},"*");' +
-				'}' +
-				'window.addEventListener("load",function(){reportHeight();setTimeout(reportHeight,500);setTimeout(reportHeight,1500);});' +
-				'<\/script>';
-			var enrichedHtml = data.html.indexOf('</body>') !== -1
-				? data.html.replace('</body>', heightScript + '</body>')
-				: data.html + heightScript;
-
-			// srcdoc avoids CSP blob: restrictions while rendering the full HTML with CSS
-			iframe.srcdoc = enrichedHtml;
+			// Load via dedicated endpoint that serves its own permissive CSP
+			// (avoids parent-page CSP blocking email inline styles/scripts)
+			iframe.src = buildUrl('emailRender', { idx: idx });
 
 			// Listen for height messages from the iframe
 			function onHeightMsg(e) {
@@ -1081,31 +1071,24 @@
 	}
 
 	function openNewsletterOverlay(idx) {
-		fetch(buildUrl('emailContent', { idx: idx }))
-			.then(function(r) { return r.json(); })
-			.then(function(data) {
-				if (!data.html) return;
-			var overlay = document.createElement('div');
-			overlay.className = 'aid-nl-overlay';
-			overlay.innerHTML = [
-				'<div class="aid-nl-viewer">',
-				'  <button class="aid-nl-close" title="Fermer">&#x2715;</button>',
-				'  <iframe class="aid-nl-frame" sandbox="allow-scripts allow-popups"></iframe>',
-				'</div>',
-			].join('');
-			document.body.appendChild(overlay);
+		var overlay = document.createElement('div');
+		overlay.className = 'aid-nl-overlay';
+		overlay.innerHTML = [
+			'<div class="aid-nl-viewer">',
+			'  <button class="aid-nl-close" title="Fermer">&#x2715;</button>',
+			'  <iframe class="aid-nl-frame" sandbox="allow-scripts allow-popups"></iframe>',
+			'</div>',
+		].join('');
+		document.body.appendChild(overlay);
 
-			var frame = overlay.querySelector('iframe');
-			frame.srcdoc = data.html;
+		overlay.querySelector('iframe').src = buildUrl('emailRender', { idx: idx });
 
-				overlay.querySelector('.aid-nl-close').addEventListener('click', function() {
-					overlay.remove();
-				});
-				overlay.addEventListener('click', function(e) {
-					if (e.target === overlay) overlay.remove();
-				});
-			})
-			.catch(function() {});
+		overlay.querySelector('.aid-nl-close').addEventListener('click', function() {
+			overlay.remove();
+		});
+		overlay.addEventListener('click', function(e) {
+			if (e.target === overlay) overlay.remove();
+		});
 	}
 
 	// ─── Init ─────────────────────────────────────────────────────────────────
