@@ -970,11 +970,104 @@
 	}
 
 	function openNewsletterEmail(idx) {
+		var stream = document.getElementById('stream');
+		if (stream) {
+			openNewsletterInStream(idx, stream);
+		} else {
+			openNewsletterOverlay(idx);
+		}
+	}
+
+	function openNewsletterInStream(idx, stream) {
 		fetch(buildUrl('emailContent', { idx: idx }))
 			.then(function(r) { return r.json(); })
 			.then(function(data) {
 				if (!data.html) return;
-				// Show in a fullscreen iframe overlay
+
+				var rec = newsletterHistory[idx];
+				if (!rec) return;
+				var d = new Date(rec.ts * 1000);
+				var dateStr = d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+
+				// Remove any previously opened newsletter flux
+				stream.querySelectorAll('.aid-newsletter-flux').forEach(function(el) { el.remove(); });
+
+				var fluxEl = document.createElement('div');
+				fluxEl.className = 'flux active current aid-newsletter-flux not_read';
+
+				fluxEl.innerHTML = [
+					'<ul class="horizontal-list flux_header websitefull">',
+					'  <li class="item manage">',
+					'    <a class="item-element aid-nl-stream-close" href="#" title="Fermer">',
+					'      <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" class="icon" width="16" height="16"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>',
+					'    </a>',
+					'  </li>',
+					'  <li class="item website full">',
+					'    <span class="item-element">',
+					'      <span class="aid-nl-favicon">' + EMAILED_SVG + '</span>',
+					'      <span class="websiteName">Newsletter IA</span>',
+					'    </span>',
+					'  </li>',
+					'  <li class="item titleAuthorSummaryDate">',
+					'    <span class="item-element title">Digest du ' + escapeHtml(dateStr) + '</span>',
+					'    <span class="item-element date"><time>' + rec.count + ' article' + (rec.count > 1 ? 's' : '') + '</time>&nbsp;</span>',
+					'  </li>',
+					'</ul>',
+					'<article class="flux_content" dir="auto">',
+					'  <div class="content content_large">',
+					'    <div class="text aid-nl-stream-body"></div>',
+					'  </div>',
+					'</article>',
+				].join('\n');
+
+				stream.insertBefore(fluxEl, stream.firstChild);
+
+				// Inject email HTML via iframe (to isolate email styles)
+				var bodyDiv = fluxEl.querySelector('.aid-nl-stream-body');
+				var iframe = document.createElement('iframe');
+				iframe.className = 'aid-nl-stream-iframe';
+				iframe.setAttribute('sandbox', 'allow-same-origin');
+				iframe.srcdoc = data.html;
+				bodyDiv.appendChild(iframe);
+
+				// Auto-resize iframe to content height
+				function resizeFrame() {
+					try {
+						var h = iframe.contentDocument.documentElement.scrollHeight
+							|| iframe.contentDocument.body.scrollHeight;
+						if (h > 100) iframe.style.height = h + 'px';
+					} catch (e) {}
+				}
+				iframe.addEventListener('load', function() {
+					resizeFrame();
+					setTimeout(resizeFrame, 300);
+				});
+				setTimeout(resizeFrame, 500);
+
+				// Close button
+				fluxEl.querySelector('.aid-nl-stream-close').addEventListener('click', function(e) {
+					e.preventDefault();
+					fluxEl.remove();
+				});
+
+				// Scroll to the article
+				fluxEl.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+				// Mark active in sidebar list
+				document.querySelectorAll('.aid-newsletter-item').forEach(function(li) {
+					li.classList.remove('active');
+				});
+				var activeItem = document.querySelector('.aid-newsletter-item[data-idx="' + idx + '"]');
+				if (activeItem) activeItem.classList.add('active');
+			})
+			.catch(function() {});
+	}
+
+	function openNewsletterOverlay(idx) {
+		fetch(buildUrl('emailContent', { idx: idx }))
+			.then(function(r) { return r.json(); })
+			.then(function(data) {
+				if (!data.html) return;
 				var overlay = document.createElement('div');
 				overlay.className = 'aid-nl-overlay';
 				overlay.innerHTML = [

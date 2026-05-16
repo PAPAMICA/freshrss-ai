@@ -1067,7 +1067,44 @@ body.aid-modal-open {
 	padding: 3px 10px;
 }
 
-/* ─── Newsletter email viewer overlay ───────────────────────────────── */
+/* ─── Newsletter article in main stream ──────────────────────────────── */
+
+.aid-newsletter-flux {
+	/* inherits .flux styles from FreshRSS */
+}
+
+.aid-newsletter-flux .flux_header .aid-nl-stream-close {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	color: var(--color-text, inherit);
+	opacity: .6;
+	transition: opacity .15s;
+}
+
+.aid-newsletter-flux .flux_header .aid-nl-stream-close:hover {
+	opacity: 1;
+}
+
+.aid-newsletter-flux .aid-nl-stream-body {
+	padding: 0;
+	overflow: hidden;
+}
+
+.aid-nl-stream-iframe {
+	display: block;
+	width: 100%;
+	min-height: 500px;
+	border: none;
+	background: #fff;
+}
+
+/* Highlight active newsletter item in sidebar */
+.aid-newsletter-item.active .item-title {
+	font-weight: 700;
+}
+
+/* ─── Newsletter email viewer overlay (fallback / configure page) ───── */
 
 .aid-nl-overlay {
 	position: fixed;
