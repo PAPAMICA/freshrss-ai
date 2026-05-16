@@ -86,6 +86,7 @@ if (Minz_Request::paramBoolean('ajax')) {
 <section>
 <h3>Fournisseur IA</h3>
 
+<div class="aid-cols-2">
 <div class="aid-field">
 	<label for="aid-provider">Fournisseur</label>
 	<select id="aid-provider" name="ai_provider">
@@ -94,6 +95,21 @@ if (Minz_Request::paramBoolean('ajax')) {
 		<?php endforeach; ?>
 	</select>
 </div>
+
+<div class="aid-field">
+	<label for="aid-language">Langue de sortie</label>
+	<select id="aid-language" name="ai_language">
+		<?php
+		$langs = ['French'=>'Français','English'=>'English','German'=>'Deutsch','Spanish'=>'Español','Italian'=>'Italiano','Portuguese'=>'Português'];
+		$currentLang = (string)$cfg('language', 'French');
+		foreach ($langs as $val => $label):
+		?>
+		<option value="<?= $val ?>" <?= $currentLang === $val ? 'selected' : '' ?>><?= htmlspecialchars($label) ?></option>
+		<?php endforeach; ?>
+	</select>
+	<p class="aid-hint">Utilisez <code>{{LANGUAGE}}</code> dans le prompt pour l'injecter dynamiquement.</p>
+</div>
+</div><!-- .aid-cols-2 -->
 
 <div class="aid-field<?= $providers[$currentProvider]['needs_key'] ? '' : ' aid-hidden' ?>" id="aid-field-key">
 	<label for="aid-api-key">Clé API</label>
