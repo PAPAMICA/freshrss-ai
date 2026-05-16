@@ -1010,6 +1010,39 @@ function updateNewsletterSidebarList(section) {
 				el.classList.toggle('aid-nl-stream-hidden', !visible);
 			}
 		});
+		// Retirer le mode newsletter quand on restaure l'affichage normal
+		if (visible) {
+			stream.classList.remove('aid-nl-view');
+		}
+	}
+
+	// Listener de capture sur #stream pour gérer les clics sur les items newsletter
+	// avant tout handler de FreshRSS (bubble phase)
+	var nlStreamCaptureAttached = false;
+
+	function attachStreamCaptureListener(stream) {
+		if (nlStreamCaptureAttached) return;
+		nlStreamCaptureAttached = true;
+		stream.addEventListener('click', function(e) {
+			// Ne traiter que les clics dans nos items newsletter
+			var item = e.target.closest('.aid-newsletter-list-item');
+			var readBtn = e.target.closest('.aid-nl-mark-read-btn');
+			if (!item && !readBtn) return;
+
+			e.stopPropagation();
+			e.stopImmediatePropagation();
+			e.preventDefault();
+
+			if (readBtn) {
+				var ts = parseInt(readBtn.closest('.aid-newsletter-list-item').dataset.ts, 10);
+				markNewsletterRead(ts);
+				return;
+			}
+
+			var idx = parseInt(item.dataset.idx, 10);
+			var ts = parseInt(item.dataset.ts, 10);
+			toggleNewsletterItem(item, idx, ts);
+		}, true); // true = phase de capture, avant les handlers bubble de FreshRSS
 	}
 
 	function openNewsletterList() {
@@ -1019,11 +1052,17 @@ function updateNewsletterSidebarList(section) {
 			return;
 		}
 
+		// Attacher le listener de capture (une seule fois)
+		attachStreamCaptureListener(stream);
+
 		// Retirer tout contenu newsletter précédent
 		stream.querySelectorAll('.aid-newsletter-flux').forEach(function(el) { el.remove(); });
 
 		// Masquer le message "aucun article" et les contrôles natifs FreshRSS
 		setStreamNativeVisible(false);
+
+		// Passer en mode newsletter view (override des CSS hide_posts de FreshRSS)
+		stream.classList.add('aid-nl-view');
 
 		// Marquer le sidebar comme actif
 		var section = document.getElementById('aid-newsletter-section');
@@ -1089,19 +1128,8 @@ function updateNewsletterSidebarList(section) {
 				'</article>',
 			].join('\n');
 
-			// Bouton "marquer comme lu" — stoppe la propagation
-			fluxEl.querySelector('.aid-nl-mark-read-btn').addEventListener('click', function(e) {
-				e.stopPropagation();
-				e.preventDefault();
-				markNewsletterRead(rec.ts);
-			});
-
-			// Clic sur l'item = expand/collapse inline (comme un article RSS)
-			fluxEl.addEventListener('click', function(e) {
-				e.stopPropagation();
-				e.preventDefault();
-				toggleNewsletterItem(fluxEl, idx, rec.ts);
-			});
+			// Les clics sont gérés par délégation en phase capture sur #stream
+			// (voir attachStreamCaptureListener)
 
 			fragment.appendChild(fluxEl);
 		});

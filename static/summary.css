@@ -1077,6 +1077,16 @@ body.aid-modal-open {
 }
 
 /* Items de la liste des newsletters (vue liste dans #stream) */
+
+/* Forcer la visibilité même quand FreshRSS applique .hide_posts sur #stream */
+#stream.aid-nl-view .aid-newsletter-flux {
+	display: block !important;
+}
+
+#stream.aid-nl-view .aid-newsletter-flux .aid-nl-content--open {
+	display: block !important;
+}
+
 .aid-newsletter-list-item {
 	cursor: pointer;
 	transition: background var(--aid-transition, 0.2s ease);
@@ -1087,7 +1097,7 @@ body.aid-modal-open {
 }
 
 .aid-newsletter-list-item .flux_header {
-	pointer-events: none; /* le clic est géré sur le parent */
+	pointer-events: none; /* le clic est géré par délégation sur #stream */
 }
 
 /* Item non lu : titre en gras */
