@@ -65,7 +65,7 @@ Articles:
 			ob_end_clean();
 		}
 
-		if (!FreshRSS_Auth::isLogged()) {
+		if (!FreshRSS_Auth::hasAccess()) {
 			http_response_code(401);
 			header('Content-Type: application/json; charset=utf-8');
 			echo json_encode(['error' => 'Non autorisé'], JSON_UNESCAPED_UNICODE);

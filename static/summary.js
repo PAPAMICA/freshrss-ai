@@ -434,51 +434,49 @@
 
 		function gid(id) { return document.getElementById(id); }
 
-		// ── Provider radio cards ───────────────────────────────────────────
-		document.querySelectorAll('input[name="ai_provider"]').forEach(function(radio) {
-			radio.addEventListener('change', function() {
-				var key = this.value;
-				var p = PROVIDERS[key];
-				if (!p) return;
-
-				var keyField = gid('aid-field-key');
-				if (keyField) keyField.style.display = p.needs_key ? '' : 'none';
-
-				var urlInput = gid('aid-api-url');
-				if (urlInput) {
-					urlInput.readOnly = !p.needs_url;
-					if (p.url) urlInput.value = p.url;
-					else if (p.needs_url) urlInput.value = '';
-				}
-
-				var sel = gid('aid-model-select');
-				var modelInput = gid('aid-model');
-				var currentModel = modelInput ? modelInput.value : '';
-				if (sel) {
-					sel.innerHTML = '';
-					(p.models || []).forEach(function(m) {
-						var opt = document.createElement('option');
-						opt.value = m; opt.textContent = m;
-						if (m === currentModel) opt.selected = true;
-						sel.appendChild(opt);
-					});
-					var custom = document.createElement('option');
-					custom.value = '__custom__'; custom.textContent = '-- Saisir un modèle --';
-					sel.appendChild(custom);
-
-					if (p.models.length > 0 && modelInput) {
-						if (p.models.indexOf(currentModel) === -1) {
-							modelInput.value = p.models[0];
-							sel.options[0].selected = true;
-						}
-					}
-				}
-
-				document.querySelectorAll('.adc-provider-card').forEach(function(c) { c.classList.remove('selected'); });
-				var card = this.closest('.adc-provider-card');
-				if (card) card.classList.add('selected');
+		// ── Provider <select> ─────────────────────────────────────────────
+		var providerSel = gid('aid-provider');
+		if (providerSel) {
+			providerSel.addEventListener('change', function() {
+				applyProvider(this.value);
 			});
-		});
+		}
+
+		function applyProvider(key) {
+			var p = PROVIDERS[key];
+			if (!p) return;
+
+			var keyField = gid('aid-field-key');
+			if (keyField) keyField.style.display = p.needs_key ? '' : 'none';
+
+			var urlInput = gid('aid-api-url');
+			if (urlInput) {
+				urlInput.readOnly = !p.needs_url;
+				if (p.url) urlInput.value = p.url;
+				else if (p.needs_url) urlInput.value = '';
+			}
+
+			var sel = gid('aid-model-select');
+			var modelInput = gid('aid-model');
+			var currentModel = modelInput ? modelInput.value : '';
+			if (sel) {
+				sel.innerHTML = '';
+				(p.models || []).forEach(function(m) {
+					var opt = document.createElement('option');
+					opt.value = m; opt.textContent = m;
+					if (m === currentModel) opt.selected = true;
+					sel.appendChild(opt);
+				});
+				var custom = document.createElement('option');
+				custom.value = '__custom__'; custom.textContent = '— Saisir un modèle —';
+				sel.appendChild(custom);
+
+				if (p.models.length > 0 && modelInput && p.models.indexOf(currentModel) === -1) {
+					modelInput.value = p.models[0];
+					sel.options[0].selected = true;
+				}
+			}
+		}
 
 		// ── Model select / text toggle ─────────────────────────────────────
 		var modelSel   = gid('aid-model-select');
@@ -521,7 +519,9 @@
 		var pwdInput  = gid('aid-api-key');
 		if (pwdToggle && pwdInput) {
 			pwdToggle.addEventListener('click', function() {
-				pwdInput.type = pwdInput.type === 'password' ? 'text' : 'password';
+				var show = pwdInput.type === 'password';
+				pwdInput.type = show ? 'text' : 'password';
+				this.textContent = show ? 'Masquer' : 'Afficher';
 			});
 		}
 

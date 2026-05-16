@@ -41,31 +41,7 @@ $providers = [
 $currentProvider = (string)$cfg('provider', 'openai');
 $currentModel    = (string)$cfg('model', 'gpt-4o-mini');
 
-// SVG icon helper — renamed aidIcon() to avoid conflicts with FreshRSS global scope
-// Size and display are set inline on the SVG to avoid any external CSS override
-function aidIcon(string $name, int $size = 16): string {
-	$w = $size; $h = $size;
-	$base = "xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" width=\"{$w}\" height=\"{$h}\" style=\"display:inline-block;vertical-align:middle;flex-shrink:0\"";
-	$paths = [
-		'brain'   => "<path d=\"M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.65-4.56A2.5 2.5 0 0 1 2 12a2.5 2.5 0 0 1 2.39-2.48 2.5 2.5 0 0 1 1.65-4.56A2.5 2.5 0 0 1 9.5 2Z\"/><path d=\"M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.65-4.56A2.5 2.5 0 0 0 22 12a2.5 2.5 0 0 0-2.39-2.48 2.5 2.5 0 0 0-1.65-4.56A2.5 2.5 0 0 0 14.5 2Z\"/>",
-		'key'     => "<circle cx=\"7.5\" cy=\"15.5\" r=\"5.5\"/><path d=\"m21 2-9.6 9.6\"/><path d=\"m15.5 7.5 3 3L22 7l-3-3\"/>",
-		'globe'   => "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/><path d=\"M2 12h20\"/>",
-		'cpu'     => "<rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"2\"/><rect x=\"9\" y=\"9\" width=\"6\" height=\"6\"/><path d=\"M15 2v2M9 2v2M15 20v2M9 20v2M2 15h2M2 9h2M20 15h2M20 9h2\"/>",
-		'mail'    => "<rect width=\"20\" height=\"16\" x=\"2\" y=\"4\" rx=\"2\"/><path d=\"m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7\"/>",
-		'text'    => "<path d=\"M17 6.1H3\"/><path d=\"M21 12.1H3\"/><path d=\"M15.1 18H3\"/>",
-		'save'    => "<path d=\"M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z\"/><path d=\"M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7\"/><path d=\"M7 3v4a1 1 0 0 0 1 1h7\"/>",
-		'plug'    => "<path d=\"M12 22v-5\"/><path d=\"M9 8V2\"/><path d=\"M15 8V2\"/><path d=\"M18 8H6a2 2 0 0 0-2 2v2a8 8 0 0 0 16 0v-2a2 2 0 0 0-2-2Z\"/>",
-		'refresh' => "<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/><path d=\"M21 3v5h-5\"/><path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/><path d=\"M8 16H3v5\"/>",
-		'eye'     => "<path d=\"M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>",
-		'clock'   => "<circle cx=\"12\" cy=\"12\" r=\"10\"/><polyline points=\"12 6 12 12 16 14\"/>",
-		'server'  => "<rect width=\"20\" height=\"8\" x=\"2\" y=\"2\" rx=\"2\" ry=\"2\"/><rect width=\"20\" height=\"8\" x=\"2\" y=\"14\" rx=\"2\" ry=\"2\"/><line x1=\"6\" x2=\"6.01\" y1=\"6\" y2=\"6\"/><line x1=\"6\" x2=\"6.01\" y1=\"18\" y2=\"18\"/>",
-		'check'   => "<path d=\"M20 6 9 17l-5-5\"/>",
-	];
-	$inner = $paths[$name] ?? '';
-	return "<svg {$base}>{$inner}</svg>";
-}
-
-// FreshRSS uses parameter 'e' (not 'ext_name') to identify the extension in configure action.
+// FreshRSS uses parameter 'e' to identify the extension in configure action.
 // When loaded via AJAX (ajax=1), the form action must also include ajax=1 so that after
 // saving, FreshRSS re-renders only the panel content (not the full page layout).
 $formAction = '?c=extension&a=configure&e=' . urlencode($this->getName());
@@ -74,265 +50,228 @@ if (Minz_Request::paramBoolean('ajax')) {
 }
 ?>
 
-<div class="ai-digest-config">
-
 <style>
-.ai-digest-config { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 860px; margin: 0 auto; padding: 0 0 40px; color: #f1f5f9 }
-.adc-header { display:flex; align-items:center; gap:16px; padding:20px 24px; background:linear-gradient(135deg,#6366f1,#4f46e5); border-radius:12px; margin-bottom:20px; color:#fff }
-.adc-title  { margin:0 !important; font-size:22px !important; font-weight:700 !important; color:#fff !important }
-.adc-subtitle { margin:4px 0 0 !important; opacity:.8; font-size:13px !important }
-.adc-section { background:#1e293b; border:1px solid #334155; border-radius:12px; padding:20px 24px; margin-bottom:16px }
-.adc-section-header { display:flex; align-items:center; gap:8px; margin-bottom:18px }
-.adc-section-header h3 { margin:0; font-size:15px; font-weight:600; color:#f1f5f9; flex:1 }
-.adc-label { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:#94a3b8; margin-bottom:6px }
-.adc-input { width:100%; padding:9px 12px; background:#0f172a; border:1px solid #334155; border-radius:8px; color:#f1f5f9; font-size:14px; box-sizing:border-box; font-family:inherit }
-.adc-input:focus { outline:none; border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.2) }
-.adc-select { cursor:pointer }
-.adc-textarea { width:100%; padding:12px; background:#0f172a; border:1px solid #334155; border-radius:8px; color:#f1f5f9; font-size:13px; font-family:'SF Mono','Fira Code',monospace; line-height:1.6; resize:vertical; box-sizing:border-box }
-.adc-textarea:focus { outline:none; border-color:#6366f1 }
-.adc-hint { margin:5px 0 0 !important; font-size:12px !important; color:#64748b !important }
-.adc-hint code { background:#1e293b; padding:1px 5px; border-radius:4px; font-size:11px }
-.adc-field-group { margin-bottom:16px }
-.adc-field-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px }
-.adc-badge { display:inline-block; background:#6366f1; color:#fff; border-radius:20px; padding:2px 8px; font-size:11px; font-weight:600; margin-left:6px }
-.adc-badge-neutral { background:#334155; color:#94a3b8 }
-.adc-range { width:100%; margin-top:6px; accent-color:#6366f1; cursor:pointer }
-.adc-provider-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; margin-bottom:18px }
-.adc-provider-card { display:flex; flex-direction:column; align-items:center; padding:12px 8px; border:2px solid #334155; border-radius:10px; cursor:pointer; background:#0f172a; transition:all .15s }
-.adc-provider-card:hover { border-color:#6366f1 }
-.adc-provider-card.selected { border-color:#6366f1; background:rgba(99,102,241,.12) }
-.adc-provider-card input[type=radio] { display:none }
-.adc-provider-name { font-size:12px; font-weight:500; color:#94a3b8; text-align:center; margin-top:4px }
-.adc-provider-card.selected .adc-provider-name { color:#818cf8 }
-.adc-input-wrapper { position:relative; display:flex }
-.adc-input-password { padding-right:40px }
-.adc-toggle-password { position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#64748b; display:flex; align-items:center; padding:4px }
-.adc-toggle-password:hover { color:#94a3b8 }
-.adc-model-row { display:flex; gap:8px; align-items:flex-start }
-.adc-model-row .adc-input { flex:1 }
-.adc-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-size:13px; font-weight:500; border:1px solid transparent; cursor:pointer; transition:all .15s; white-space:nowrap }
-.adc-btn:disabled { opacity:.6; cursor:not-allowed }
-.adc-btn-primary { background:#6366f1; color:#fff; border-color:#6366f1 }
-.adc-btn-primary:hover:not(:disabled) { background:#4f46e5 }
-.adc-btn-secondary { background:#1e293b; color:#94a3b8; border-color:#334155 }
-.adc-btn-secondary:hover:not(:disabled) { border-color:#6366f1; color:#818cf8 }
-.adc-btn-ghost { background:transparent; color:#64748b; border-color:#334155; font-size:12px; padding:5px 10px }
-.adc-btn-ghost:hover:not(:disabled) { color:#94a3b8; border-color:#475569 }
-.adc-toggle { position:relative; display:inline-block; width:44px; height:24px; flex-shrink:0 }
-.adc-toggle input { opacity:0; width:0; height:0 }
-.adc-toggle-slider { position:absolute; cursor:pointer; inset:0; background:#334155; border-radius:24px; transition:.2s }
-.adc-toggle-slider::before { content:''; position:absolute; height:18px; width:18px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,.3) }
-.adc-toggle input:checked + .adc-toggle-slider { background:#6366f1 }
-.adc-toggle input:checked + .adc-toggle-slider::before { transform:translateX(20px) }
-.adc-subsection { margin-top:16px; padding:16px; background:#0f172a; border-radius:8px; border:1px solid #334155 }
-.adc-checkbox-label { display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; color:#94a3b8; margin-top:10px }
-.adc-checkbox-label input { accent-color:#6366f1; width:15px; height:15px }
-.adc-actions { display:flex; justify-content:flex-end; padding-top:8px }
-.adc-actions-inline { display:flex; align-items:center; gap:12px; margin-top:14px }
-.adc-inline-status { font-size:13px }
-.adc-inline-status.success { color:#10b981 }
-.adc-inline-status.error { color:#ef4444 }
-.adc-test-result { margin-top:10px; padding:10px 14px; border-radius:8px; font-size:13px; line-height:1.5 }
-.adc-test-result.success { background:#064e3b; border:1px solid #10b981; color:#6ee7b7 }
-.adc-test-result.error { background:#450a0a; border:1px solid #ef4444; color:#fca5a5 }
-.adc-cron-info { margin-top:16px; padding:14px 16px; background:rgba(99,102,241,.08); border-radius:8px; border-left:3px solid #6366f1 }
-.adc-cron-info p { margin:6px 0 8px; font-size:13px; color:#64748b }
-.adc-code { background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px 14px; font-family:'SF Mono','Fira Code',monospace; font-size:12px; color:#e2e8f0; overflow-x:auto; white-space:pre; margin:0 }
+.aid-cfg { max-width: 720px }
+.aid-cfg section { margin-bottom: 1.5em }
+.aid-cfg section > h3 { font-size: 1em; font-weight: bold; border-bottom: 1px solid var(--color-border, #ddd); padding-bottom: .3em; margin-bottom: .8em }
+.aid-cfg .aid-row { display: flex; flex-direction: column; gap: .3em; margin-bottom: .8em }
+.aid-cfg label { font-size: .9em; font-weight: 600; color: var(--color-secondary, #555) }
+.aid-cfg input[type="text"],
+.aid-cfg input[type="url"],
+.aid-cfg input[type="email"],
+.aid-cfg input[type="number"],
+.aid-cfg input[type="password"],
+.aid-cfg select,
+.aid-cfg textarea { width: 100%; max-width: 100%; box-sizing: border-box }
+.aid-cfg .aid-hint { font-size: .8em; color: var(--color-secondary, #888); margin: .2em 0 0 }
+.aid-cfg .aid-hint code { background: var(--color-background-alt, #f4f4f4); padding: 0 4px; border-radius: 3px }
+.aid-cfg .aid-row-inline { flex-direction: row; align-items: center; gap: .6em; flex-wrap: wrap }
+.aid-cfg .aid-pwd-wrap { display: flex; gap: .4em }
+.aid-cfg .aid-pwd-wrap input { flex: 1 }
+.aid-cfg .aid-grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: .8em }
+.aid-cfg .aid-grid-3 { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: .8em }
+.aid-cfg .aid-range-row { display: flex; align-items: center; gap: .6em }
+.aid-cfg .aid-range-row input[type=range] { flex: 1 }
+.aid-cfg .aid-badge { display: inline-block; background: var(--color-primary, #0060df); color: #fff; border-radius: 3px; padding: 0 5px; font-size: .8em; min-width: 2.5em; text-align: center }
+.aid-cfg .aid-test-result { margin-top: .5em; padding: .5em .8em; border-radius: 3px; font-size: .85em }
+.aid-cfg .aid-test-result.success { background: #d4edda; color: #155724; border: 1px solid #c3e6cb }
+.aid-cfg .aid-test-result.error   { background: #f8d7da; color: #721c24; border: 1px solid #f5c6cb }
+.aid-cfg .aid-subsection { margin-top: .6em; padding: .8em; border: 1px solid var(--color-border, #ddd); border-radius: 4px; background: var(--color-background-alt, #fafafa) }
+.aid-cfg .aid-subsection h4 { font-size: .9em; font-weight: bold; margin: 0 0 .6em }
+.aid-cfg .aid-status { font-size: .85em; margin-left: .4em }
+.aid-cfg .aid-status.success { color: #155724 }
+.aid-cfg .aid-status.error   { color: #721c24 }
+.aid-cfg .aid-actions { margin-top: 1em; display: flex; gap: .5em; align-items: center }
+@media (max-width: 500px) {
+	.aid-cfg .aid-grid-2,
+	.aid-cfg .aid-grid-3 { grid-template-columns: 1fr }
+}
 </style>
 
-	<div class="adc-header">
-		<?= aidIcon('brain', 32) ?>
-		<div>
-			<h2 class="adc-title">AI Digest</h2>
-			<p class="adc-subtitle">Résumé intelligent de vos flux RSS via intelligence artificielle</p>
+<div class="aid-cfg">
+<form method="post" action="<?= htmlspecialchars($formAction) ?>" class="adc-form">
+
+	<!-- ── Fournisseur IA ──────────────────────────────────────────── -->
+	<section>
+		<h3>Fournisseur IA</h3>
+
+		<div class="aid-row">
+			<label for="aid-provider">Fournisseur</label>
+			<select id="aid-provider" name="ai_provider">
+				<?php foreach ($providers as $key => $p): ?>
+				<option value="<?= $key ?>" <?= $currentProvider === $key ? 'selected' : '' ?>><?= htmlspecialchars($p['label']) ?></option>
+				<?php endforeach; ?>
+			</select>
 		</div>
+
+		<div class="aid-row" id="aid-field-key" style="<?= $providers[$currentProvider]['needs_key'] ? '' : 'display:none' ?>">
+			<label for="aid-api-key">Clé API</label>
+			<div class="aid-pwd-wrap">
+				<input type="password" id="aid-api-key" name="ai_api_key"
+					value="<?= htmlspecialchars((string)$cfg('api_key')) ?>"
+					placeholder="sk-…"
+					autocomplete="new-password">
+				<button type="button" id="aid-toggle-pwd" class="btn">Afficher</button>
+			</div>
+		</div>
+
+		<div class="aid-row">
+			<label for="aid-api-url">URL de base de l'API</label>
+			<input type="url" id="aid-api-url" name="ai_api_base_url"
+				value="<?= htmlspecialchars((string)$cfg('api_base_url', $providers[$currentProvider]['url'])) ?>"
+				placeholder="https://api.openai.com/v1"
+				<?= !$providers[$currentProvider]['needs_url'] ? 'readonly' : '' ?>>
+			<p class="aid-hint">Rempli automatiquement. Modifiable pour un endpoint personnalisé.</p>
+		</div>
+
+		<div class="aid-row">
+			<label for="aid-model-select">Modèle</label>
+			<div class="aid-row-inline">
+				<select id="aid-model-select" style="flex:1">
+					<?php
+					$modelsList = $providers[$currentProvider]['models'];
+					foreach ($modelsList as $m): ?>
+					<option value="<?= htmlspecialchars($m) ?>" <?= $currentModel === $m ? 'selected' : '' ?>><?= htmlspecialchars($m) ?></option>
+					<?php endforeach; ?>
+					<?php if (!in_array($currentModel, $modelsList, true) && !empty($currentModel)): ?>
+					<option value="<?= htmlspecialchars($currentModel) ?>" selected><?= htmlspecialchars($currentModel) ?></option>
+					<?php endif; ?>
+					<option value="__custom__">— Saisir un modèle —</option>
+				</select>
+				<input type="text" id="aid-model" name="ai_model"
+					value="<?= htmlspecialchars($currentModel) ?>"
+					placeholder="Nom du modèle"
+					style="flex:1;display:none">
+				<button type="button" id="aid-test-btn" class="btn">Tester la connexion</button>
+			</div>
+			<div id="aid-test-result" class="aid-test-result" style="display:none"></div>
+		</div>
+
+		<div class="aid-grid-3">
+			<div class="aid-row">
+				<label for="aid-temp">Température — <span class="aid-badge" id="aid-temp-badge"><?= number_format((float)$cfg('temperature', 0.3), 1) ?></span></label>
+				<div class="aid-range-row">
+					<input type="range" id="aid-temp" name="ai_temperature" min="0" max="2" step="0.1" value="<?= htmlspecialchars((string)$cfg('temperature', '0.3')) ?>">
+				</div>
+				<p class="aid-hint">0 = déterministe · 2 = créatif</p>
+			</div>
+			<div class="aid-row">
+				<label for="aid-art">Articles max — <span class="aid-badge" id="aid-art-badge"><?= (int)$cfg('max_articles', 50) ?></span></label>
+				<div class="aid-range-row">
+					<input type="range" id="aid-art" name="ai_max_articles" min="5" max="200" step="5" value="<?= (int)$cfg('max_articles', 50) ?>">
+				</div>
+				<p class="aid-hint">Articles envoyés à l'IA</p>
+			</div>
+			<div class="aid-row">
+				<label for="aid-chr">Caractères/article — <span class="aid-badge" id="aid-chr-badge"><?= (int)$cfg('max_chars', 2000) ?></span></label>
+				<div class="aid-range-row">
+					<input type="range" id="aid-chr" name="ai_max_chars" min="200" max="10000" step="100" value="<?= (int)$cfg('max_chars', 2000) ?>">
+				</div>
+				<p class="aid-hint">Taille max par article</p>
+			</div>
+		</div>
+	</section>
+
+	<!-- ── Prompt ─────────────────────────────────────────────────── -->
+	<section>
+		<h3>Prompt système</h3>
+		<div class="aid-row">
+			<label for="aid-prompt">
+				Instruction donnée à l'IA
+				<button type="button" id="aid-reset-prompt" class="btn" style="margin-left:.5em;font-size:.8em">Réinitialiser</button>
+			</label>
+			<p class="aid-hint">Utilisez <code>{{ARTICLES}}</code> comme emplacement pour les articles.</p>
+			<textarea id="aid-prompt" name="ai_prompt" rows="16"><?= htmlspecialchars((string)$cfg('prompt', $defaultPrompt)) ?></textarea>
+		</div>
+	</section>
+
+	<!-- ── Rapport email ──────────────────────────────────────────── -->
+	<section>
+		<h3>
+			Rapport par email
+			<label style="font-size:.85em;font-weight:normal;margin-left:.8em;cursor:pointer">
+				<input type="checkbox" name="email_enabled" value="1" id="aid-email-toggle" <?= $cfg('email_enabled', false) ? 'checked' : '' ?>>
+				Activer
+			</label>
+		</h3>
+
+		<div id="aid-email-settings" style="<?= $cfg('email_enabled', false) ? '' : 'display:none' ?>">
+			<div class="aid-grid-3">
+				<div class="aid-row">
+					<label for="aid-email-to">Destinataire</label>
+					<input type="email" id="aid-email-to" name="email_to" value="<?= htmlspecialchars((string)$cfg('email_to')) ?>" placeholder="vous@exemple.com">
+				</div>
+				<div class="aid-row">
+					<label for="aid-email-from">Expéditeur</label>
+					<input type="email" id="aid-email-from" name="email_from" value="<?= htmlspecialchars((string)$cfg('email_from')) ?>" placeholder="freshrss@exemple.com">
+				</div>
+				<div class="aid-row">
+					<label for="aid-email-name">Nom expéditeur</label>
+					<input type="text" id="aid-email-name" name="email_from_name" value="<?= htmlspecialchars((string)$cfg('email_from_name', 'FreshRSS AI Digest')) ?>">
+				</div>
+			</div>
+			<div class="aid-grid-2">
+				<div class="aid-row">
+					<label for="aid-schedule">Envoi automatique</label>
+					<select id="aid-schedule" name="email_schedule">
+						<option value="never" <?= $cfg('email_schedule') === 'never' ? 'selected' : '' ?>>Désactivé</option>
+						<option value="daily" <?= $cfg('email_schedule') === 'daily' ? 'selected' : '' ?>>Quotidien</option>
+						<option value="weekly" <?= $cfg('email_schedule') === 'weekly' ? 'selected' : '' ?>>Hebdomadaire (lundi)</option>
+					</select>
+				</div>
+				<div class="aid-row">
+					<label for="aid-hour">Heure d'envoi (0–23)</label>
+					<input type="number" id="aid-hour" name="email_hour" min="0" max="23" value="<?= (int)$cfg('email_hour', 8) ?>" style="max-width:80px">
+				</div>
+			</div>
+
+			<div class="aid-subsection">
+				<h4>Configuration SMTP <small style="font-weight:normal">(optionnel — laissez vide pour utiliser <code>mail()</code>)</small></h4>
+				<div class="aid-grid-3">
+					<div class="aid-row">
+						<label for="aid-smtp-host">Hôte SMTP</label>
+						<input type="text" id="aid-smtp-host" name="smtp_host" value="<?= htmlspecialchars((string)$cfg('smtp_host')) ?>" placeholder="smtp.gmail.com">
+					</div>
+					<div class="aid-row">
+						<label for="aid-smtp-port">Port</label>
+						<input type="number" id="aid-smtp-port" name="smtp_port" value="<?= (int)$cfg('smtp_port', 587) ?>" style="max-width:80px">
+					</div>
+					<div class="aid-row">
+						<label for="aid-smtp-user">Utilisateur</label>
+						<input type="text" id="aid-smtp-user" name="smtp_user" value="<?= htmlspecialchars((string)$cfg('smtp_user')) ?>">
+					</div>
+				</div>
+				<div class="aid-row" style="max-width:300px">
+					<label for="aid-smtp-pass">Mot de passe SMTP</label>
+					<input type="password" id="aid-smtp-pass" name="smtp_pass" value="<?= htmlspecialchars((string)$cfg('smtp_pass')) ?>" autocomplete="new-password">
+				</div>
+				<label style="cursor:pointer">
+					<input type="checkbox" name="smtp_tls" value="1" <?= $cfg('smtp_tls', true) ? 'checked' : '' ?>>
+					Activer TLS/STARTTLS
+				</label>
+			</div>
+
+			<div class="aid-actions">
+				<button type="button" id="aid-test-email" class="btn">Envoyer un email de test</button>
+				<span id="aid-email-status" class="aid-status"></span>
+			</div>
+
+			<div class="aid-subsection" style="margin-top:.8em">
+				<h4>Cron — envoi automatique</h4>
+				<p class="aid-hint">Ajoutez cette ligne à votre crontab (<code>crontab -e</code>) :</p>
+				<code style="display:block;margin-top:.4em;word-break:break-all">0 <?= (int)$cfg('email_hour', 8) ?> * * * www-data php /var/www/FreshRSS/extensions/xExtension-AIDigest/cron.php &gt;&gt; /var/log/freshrss-ai-digest.log 2&gt;&amp;1</code>
+			</div>
+		</div>
+	</section>
+
+	<div class="aid-actions">
+		<button type="submit" class="btn important">Enregistrer</button>
 	</div>
 
-	<form method="post" action="<?= htmlspecialchars($formAction) ?>" class="adc-form">
-
-		<!-- ─── Fournisseur IA ──────────────────────────────────────── -->
-		<div class="adc-section">
-			<div class="adc-section-header">
-				<?= aidIcon('plug') ?>
-				<h3>Fournisseur IA</h3>
-			</div>
-
-			<div class="adc-provider-grid">
-				<?php foreach ($providers as $key => $p): ?>
-				<label class="adc-provider-card <?= $currentProvider === $key ? 'selected' : '' ?>">
-					<input type="radio" name="ai_provider" value="<?= $key ?>" <?= $currentProvider === $key ? 'checked' : '' ?>>
-					<span class="adc-provider-name"><?= htmlspecialchars($p['label']) ?></span>
-				</label>
-				<?php endforeach; ?>
-			</div>
-
-			<div class="adc-field-group" id="aid-field-key" style="<?= $providers[$currentProvider]['needs_key'] ? '' : 'display:none' ?>">
-				<label class="adc-label"><?= aidIcon('key') ?> Clé API</label>
-				<div class="adc-input-wrapper">
-					<input type="password" id="aid-api-key" name="ai_api_key"
-						value="<?= htmlspecialchars((string)$cfg('api_key')) ?>"
-						placeholder="sk-... ou votre clé API"
-						class="adc-input adc-input-password"
-						autocomplete="new-password">
-					<button type="button" class="adc-toggle-password" id="aid-toggle-pwd" title="Afficher/masquer"><?= aidIcon('eye') ?></button>
-				</div>
-			</div>
-
-			<div class="adc-field-group">
-				<label class="adc-label"><?= aidIcon('globe') ?> URL de base de l'API</label>
-				<input type="url" id="aid-api-url" name="ai_api_base_url"
-					value="<?= htmlspecialchars((string)$cfg('api_base_url', $providers[$currentProvider]['url'])) ?>"
-					placeholder="https://api.openai.com/v1"
-					class="adc-input"
-					<?= !$providers[$currentProvider]['needs_url'] ? 'readonly' : '' ?>>
-				<p class="adc-hint">Rempli automatiquement selon le fournisseur. Modifiable pour un endpoint custom.</p>
-			</div>
-
-			<div class="adc-field-group">
-				<label class="adc-label"><?= aidIcon('cpu') ?> Modèle</label>
-				<div class="adc-model-row">
-					<select id="aid-model-select" class="adc-input adc-select">
-						<?php
-						$modelsList = $providers[$currentProvider]['models'];
-						foreach ($modelsList as $m): ?>
-						<option value="<?= htmlspecialchars($m) ?>" <?= $currentModel === $m ? 'selected' : '' ?>><?= htmlspecialchars($m) ?></option>
-						<?php endforeach; ?>
-						<?php if (!in_array($currentModel, $modelsList, true) && !empty($currentModel)): ?>
-						<option value="<?= htmlspecialchars($currentModel) ?>" selected><?= htmlspecialchars($currentModel) ?></option>
-						<?php endif; ?>
-						<option value="__custom__">-- Saisir un modèle --</option>
-					</select>
-					<input type="text" id="aid-model" name="ai_model"
-						value="<?= htmlspecialchars($currentModel) ?>"
-						placeholder="Nom du modèle"
-						class="adc-input"
-						style="display:none">
-					<button type="button" class="adc-btn adc-btn-secondary" id="aid-test-btn">
-						<?= aidIcon('plug') ?> Tester la connexion
-					</button>
-				</div>
-				<div id="aid-test-result" class="adc-test-result" style="display:none"></div>
-			</div>
-
-			<div class="adc-field-row">
-				<div class="adc-field-group">
-					<label class="adc-label">Température <span class="adc-badge" id="aid-temp-badge"><?= number_format((float)$cfg('temperature', 0.3), 1) ?></span></label>
-					<input type="range" id="aid-temp" name="ai_temperature" min="0" max="2" step="0.1" value="<?= htmlspecialchars((string)$cfg('temperature', '0.3')) ?>" class="adc-range">
-					<p class="adc-hint">0 = déterministe · 1 = créatif · 2 = aléatoire</p>
-				</div>
-				<div class="adc-field-group">
-					<label class="adc-label">Articles max <span class="adc-badge" id="aid-art-badge"><?= (int)$cfg('max_articles', 50) ?></span></label>
-					<input type="range" id="aid-art" name="ai_max_articles" min="5" max="200" step="5" value="<?= (int)$cfg('max_articles', 50) ?>" class="adc-range">
-					<p class="adc-hint">Nombre maximum d'articles envoyés à l'IA</p>
-				</div>
-				<div class="adc-field-group">
-					<label class="adc-label">Caractères/article <span class="adc-badge" id="aid-chr-badge"><?= (int)$cfg('max_chars', 2000) ?></span></label>
-					<input type="range" id="aid-chr" name="ai_max_chars" min="200" max="10000" step="100" value="<?= (int)$cfg('max_chars', 2000) ?>" class="adc-range">
-					<p class="adc-hint">Taille max du contenu par article</p>
-				</div>
-			</div>
-		</div>
-
-		<!-- ─── Prompt ──────────────────────────────────────────────── -->
-		<div class="adc-section">
-			<div class="adc-section-header">
-				<?= aidIcon('text') ?>
-				<h3>Prompt système</h3>
-				<button type="button" class="adc-btn adc-btn-ghost" id="aid-reset-prompt"><?= aidIcon('refresh') ?> Réinitialiser</button>
-			</div>
-			<p class="adc-hint" style="margin-bottom:10px">Utilisez <code>{{ARTICLES}}</code> comme emplacement pour les articles.</p>
-			<textarea id="aid-prompt" name="ai_prompt" class="adc-textarea" rows="16"><?= htmlspecialchars((string)$cfg('prompt', $defaultPrompt)) ?></textarea>
-		</div>
-
-		<!-- ─── Email ───────────────────────────────────────────────── -->
-		<div class="adc-section">
-			<div class="adc-section-header">
-				<?= aidIcon('mail') ?>
-				<h3>Rapport par email</h3>
-				<label class="adc-toggle">
-					<input type="checkbox" name="email_enabled" value="1" id="aid-email-toggle" <?= $cfg('email_enabled', false) ? 'checked' : '' ?>>
-					<span class="adc-toggle-slider"></span>
-				</label>
-			</div>
-
-			<div id="aid-email-settings" style="<?= $cfg('email_enabled', false) ? '' : 'display:none' ?>">
-				<div class="adc-field-row">
-					<div class="adc-field-group">
-						<label class="adc-label">Destinataire</label>
-						<input type="email" name="email_to" value="<?= htmlspecialchars((string)$cfg('email_to')) ?>" placeholder="vous@exemple.com" class="adc-input">
-					</div>
-					<div class="adc-field-group">
-						<label class="adc-label">Expéditeur</label>
-						<input type="email" name="email_from" value="<?= htmlspecialchars((string)$cfg('email_from')) ?>" placeholder="freshrss@exemple.com" class="adc-input">
-					</div>
-					<div class="adc-field-group">
-						<label class="adc-label">Nom expéditeur</label>
-						<input type="text" name="email_from_name" value="<?= htmlspecialchars((string)$cfg('email_from_name', 'FreshRSS AI Digest')) ?>" class="adc-input">
-					</div>
-				</div>
-				<div class="adc-field-row">
-					<div class="adc-field-group">
-						<label class="adc-label"><?= aidIcon('clock') ?> Envoi automatique</label>
-						<select name="email_schedule" class="adc-input adc-select">
-							<option value="never" <?= $cfg('email_schedule') === 'never' ? 'selected' : '' ?>>Désactivé</option>
-							<option value="daily" <?= $cfg('email_schedule') === 'daily' ? 'selected' : '' ?>>Quotidien</option>
-							<option value="weekly" <?= $cfg('email_schedule') === 'weekly' ? 'selected' : '' ?>>Hebdomadaire (lundi)</option>
-						</select>
-					</div>
-					<div class="adc-field-group" style="max-width:140px">
-						<label class="adc-label">Heure d'envoi</label>
-						<input type="number" name="email_hour" min="0" max="23" value="<?= (int)$cfg('email_hour', 8) ?>" class="adc-input">
-					</div>
-				</div>
-				<div class="adc-subsection">
-					<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-						<?= aidIcon('server') ?>
-						<strong style="font-size:13px;color:#94a3b8">Configuration SMTP</strong>
-						<span class="adc-badge adc-badge-neutral">Optionnel</span>
-					</div>
-					<p class="adc-hint" style="margin-bottom:12px">Laissez vide pour utiliser la fonction <code>mail()</code> de PHP.</p>
-					<div class="adc-field-row">
-						<div class="adc-field-group">
-							<label class="adc-label">Hôte SMTP</label>
-							<input type="text" name="smtp_host" value="<?= htmlspecialchars((string)$cfg('smtp_host')) ?>" placeholder="smtp.gmail.com" class="adc-input">
-						</div>
-						<div class="adc-field-group" style="max-width:100px">
-							<label class="adc-label">Port</label>
-							<input type="number" name="smtp_port" value="<?= (int)$cfg('smtp_port', 587) ?>" class="adc-input">
-						</div>
-						<div class="adc-field-group">
-							<label class="adc-label">Utilisateur</label>
-							<input type="text" name="smtp_user" value="<?= htmlspecialchars((string)$cfg('smtp_user')) ?>" class="adc-input">
-						</div>
-						<div class="adc-field-group">
-							<label class="adc-label">Mot de passe</label>
-							<input type="password" name="smtp_pass" value="<?= htmlspecialchars((string)$cfg('smtp_pass')) ?>" class="adc-input" autocomplete="new-password">
-						</div>
-					</div>
-					<label class="adc-checkbox-label">
-						<input type="checkbox" name="smtp_tls" value="1" <?= $cfg('smtp_tls', true) ? 'checked' : '' ?>>
-						Activer TLS/STARTTLS
-					</label>
-				</div>
-				<div class="adc-actions-inline">
-					<button type="button" class="adc-btn adc-btn-secondary" id="aid-test-email"><?= aidIcon('mail') ?> Email de test</button>
-					<span id="aid-email-status" class="adc-inline-status"></span>
-				</div>
-				<div class="adc-cron-info">
-					<strong style="display:flex;align-items:center;gap:6px;color:#94a3b8;font-size:13px"><?= aidIcon('clock') ?> Configuration cron</strong>
-					<p>Ajoutez cette ligne à votre crontab (<code>crontab -e</code>) :</p>
-					<pre class="adc-code">0 <?= (int)$cfg('email_hour', 8) ?> * * * www-data php /var/www/FreshRSS/extensions/xExtension-AIDigest/cron.php &gt;&gt; /var/log/freshrss-ai-digest.log 2&gt;&amp;1</pre>
-				</div>
-			</div>
-		</div>
-
-		<div class="adc-actions">
-			<button type="submit" class="adc-btn adc-btn-primary"><?= aidIcon('save') ?> Enregistrer</button>
-		</div>
-	</form>
+</form>
 </div>
 
-<!-- Data for summary.js configure page handler (survives innerHTML insertion) -->
+<!-- Données PHP pour summary.js (survit à l'insertion innerHTML via AJAX) -->
 <div id="aid-config-data"
 	data-providers="<?= htmlspecialchars(json_encode(array_map(fn($p) => ['url' => $p['url'], 'models' => $p['models'], 'needs_key' => $p['needs_key'], 'needs_url' => $p['needs_url']], $providers), JSON_UNESCAPED_UNICODE), ENT_QUOTES) ?>"
 	data-default-prompt="<?= htmlspecialchars($defaultPrompt, ENT_QUOTES) ?>"
