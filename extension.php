@@ -91,6 +91,9 @@ Articles:
 			ob_end_clean();
 		}
 
+		header('Cache-Control: no-store, no-cache, must-revalidate');
+		header('Pragma: no-cache');
+
 		if (!FreshRSS_Auth::hasAccess()) {
 			http_response_code(401);
 			header('Content-Type: application/json; charset=utf-8');
