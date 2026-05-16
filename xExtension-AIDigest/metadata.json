@@ -1,0 +1,8 @@
+{
+	"name": "AI Digest",
+	"author": "Mickael Asseline",
+	"description": "Résumé intelligent des articles non lus via IA (OpenAI, Anthropic, Mistral, Ollama, etc..)",
+	"version": "1.0.0",
+	"entrypoint": "AIDigestExtension",
+	"type": "system"
+}

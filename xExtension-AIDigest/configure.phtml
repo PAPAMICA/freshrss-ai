@@ -1,0 +1,403 @@
+<?php
+/** @var AIDigestExtension $this */
+$config = $this->getSystemConfiguration();
+$cfg = function(string $key, mixed $default = '') use ($config): mixed {
+	return $config[$key] ?? $default;
+};
+
+$defaultPrompt = 'You are an experienced news editor.
+
+Your task is to analyze multiple news articles coming from RSS feeds and produce a concise and clear news digest in French.
+
+Instructions:
+- Group and merge articles covering the same topic or event.
+- Avoid duplicates and repetitive information.
+- Prioritize the most important and impactful news.
+- Keep a neutral and professional journalistic tone.
+- Write in fluent natural French.
+- Create short sections with a title for each major topic.
+- Mention important facts, companies, countries, products, or people involved.
+- If multiple sources discuss the same event, synthesize them into a single coherent summary.
+- Ignore advertisements, sponsored content, and irrelevant details.
+- Keep the final output concise but informative.
+
+Output format:
+- One main title (use # Title)
+- Then multiple sections:
+  ## Topic title
+  Short summarized paragraph
+
+Articles:
+{{ARTICLES}}';
+
+$providers = [
+	'openai' => ['label' => 'OpenAI', 'icon' => '🤖', 'models' => ['gpt-4o', 'gpt-4o-mini', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'], 'needs_key' => true, 'needs_url' => false],
+	'anthropic' => ['label' => 'Anthropic Claude', 'icon' => '🧬', 'models' => ['claude-opus-4-5', 'claude-sonnet-4-5', 'claude-3-5-sonnet-20241022', 'claude-3-5-haiku-20241022', 'claude-3-opus-20240229'], 'needs_key' => true, 'needs_url' => false],
+	'mistral' => ['label' => 'Mistral AI', 'icon' => '🌪️', 'models' => ['mistral-large-latest', 'mistral-small-latest', 'open-mistral-7b', 'open-mixtral-8x7b'], 'needs_key' => true, 'needs_url' => false],
+	'ollama' => ['label' => 'Ollama (local)', 'icon' => '🦙', 'models' => ['llama3.2', 'llama3.1', 'mistral', 'gemma2', 'qwen2.5', 'phi3'], 'needs_key' => false, 'needs_url' => true],
+	'custom' => ['label' => 'API compatible OpenAI', 'icon' => '⚙️', 'models' => [], 'needs_key' => true, 'needs_url' => true],
+];
+
+$currentProvider = (string)$cfg('provider', 'openai');
+$currentModel = (string)$cfg('model', 'gpt-4o-mini');
+?>
+
+<div class="ai-digest-config">
+
+	<div class="adc-header">
+		<div class="adc-header-icon">🧠</div>
+		<div>
+			<h2 class="adc-title">AI Digest</h2>
+			<p class="adc-subtitle">Résumé intelligent de vos flux RSS via intelligence artificielle</p>
+		</div>
+	</div>
+
+	<form method="post" action="" class="adc-form">
+
+		<!-- ─── Section : Fournisseur IA ─────────────────────────────── -->
+		<div class="adc-section">
+			<div class="adc-section-header">
+				<span class="adc-section-icon">⚡</span>
+				<h3>Fournisseur IA</h3>
+			</div>
+
+			<div class="adc-provider-grid">
+				<?php foreach ($providers as $key => $p): ?>
+				<label class="adc-provider-card <?= $currentProvider === $key ? 'selected' : '' ?>">
+					<input type="radio" name="ai_provider" value="<?= $key ?>" <?= $currentProvider === $key ? 'checked' : '' ?>>
+					<span class="adc-provider-icon"><?= $p['icon'] ?></span>
+					<span class="adc-provider-name"><?= htmlspecialchars($p['label']) ?></span>
+				</label>
+				<?php endforeach; ?>
+			</div>
+
+			<div class="adc-field-group" id="field-api-key" style="<?= $providers[$currentProvider]['needs_key'] ? '' : 'display:none' ?>">
+				<label class="adc-label" for="ai_api_key">🔑 Clé API</label>
+				<div class="adc-input-wrapper">
+					<input type="password" id="ai_api_key" name="ai_api_key"
+						value="<?= htmlspecialchars((string)$cfg('api_key')) ?>"
+						placeholder="sk-... ou votre clé API"
+						class="adc-input adc-input-password"
+						autocomplete="new-password">
+					<button type="button" class="adc-toggle-password" title="Afficher/masquer">👁</button>
+				</div>
+			</div>
+
+			<div class="adc-field-group" id="field-api-url" style="<?= $providers[$currentProvider]['needs_url'] ? '' : 'display:none' ?>">
+				<label class="adc-label" for="ai_api_base_url">🌐 URL de base de l'API</label>
+				<input type="url" id="ai_api_base_url" name="ai_api_base_url"
+					value="<?= htmlspecialchars((string)$cfg('api_base_url')) ?>"
+					placeholder="http://localhost:11434 (Ollama) ou https://api.example.com/v1"
+					class="adc-input">
+				<p class="adc-hint">Pour Ollama : <code>http://localhost:11434</code> — Pour une API custom : URL de base sans <code>/chat/completions</code></p>
+			</div>
+
+			<div class="adc-field-group">
+				<label class="adc-label" for="ai_model">🎯 Modèle</label>
+				<div class="adc-model-wrapper">
+					<select id="ai_model_select" class="adc-input adc-select">
+						<?php
+						$modelsList = $providers[$currentProvider]['models'];
+						foreach ($modelsList as $m):
+						?>
+						<option value="<?= htmlspecialchars($m) ?>" <?= $currentModel === $m ? 'selected' : '' ?>><?= htmlspecialchars($m) ?></option>
+						<?php endforeach; ?>
+						<?php if (!in_array($currentModel, $modelsList, true) && !empty($currentModel)): ?>
+						<option value="<?= htmlspecialchars($currentModel) ?>" selected><?= htmlspecialchars($currentModel) ?> (personnalisé)</option>
+						<?php endif; ?>
+						<option value="__custom__">✏️ Saisir un modèle personnalisé...</option>
+					</select>
+					<input type="text" id="ai_model" name="ai_model"
+						value="<?= htmlspecialchars($currentModel) ?>"
+						placeholder="Nom du modèle"
+						class="adc-input adc-input-model"
+						style="display:none">
+				</div>
+				<p class="adc-hint">Sélectionnez un modèle prédéfini ou saisissez un nom personnalisé.</p>
+			</div>
+
+			<div class="adc-field-row">
+				<div class="adc-field-group">
+					<label class="adc-label" for="ai_temperature">🌡️ Température <span class="adc-badge" id="temp-badge"><?= number_format((float)$cfg('temperature', 0.3), 1) ?></span></label>
+					<input type="range" id="ai_temperature" name="ai_temperature"
+						min="0" max="2" step="0.1"
+						value="<?= htmlspecialchars((string)$cfg('temperature', '0.3')) ?>"
+						class="adc-range">
+					<p class="adc-hint">0 = déterministe · 1 = créatif · 2 = très aléatoire</p>
+				</div>
+				<div class="adc-field-group">
+					<label class="adc-label" for="ai_max_articles">📰 Articles max <span class="adc-badge" id="articles-badge"><?= (int)$cfg('max_articles', 50) ?></span></label>
+					<input type="range" id="ai_max_articles" name="ai_max_articles"
+						min="5" max="200" step="5"
+						value="<?= (int)$cfg('max_articles', 50) ?>"
+						class="adc-range">
+					<p class="adc-hint">Nombre maximum d'articles à inclure dans le résumé</p>
+				</div>
+				<div class="adc-field-group">
+					<label class="adc-label" for="ai_max_chars">✂️ Chars/article <span class="adc-badge" id="chars-badge"><?= (int)$cfg('max_chars', 2000) ?></span></label>
+					<input type="range" id="ai_max_chars" name="ai_max_chars"
+						min="200" max="10000" step="100"
+						value="<?= (int)$cfg('max_chars', 2000) ?>"
+						class="adc-range">
+					<p class="adc-hint">Taille maximum du contenu de chaque article envoyé à l'IA</p>
+				</div>
+			</div>
+		</div>
+
+		<!-- ─── Section : Prompt ─────────────────────────────────────── -->
+		<div class="adc-section">
+			<div class="adc-section-header">
+				<span class="adc-section-icon">📝</span>
+				<h3>Prompt système</h3>
+				<button type="button" class="adc-btn adc-btn-ghost" id="reset-prompt">↩ Réinitialiser</button>
+			</div>
+			<p class="adc-hint">Utilisez <code>{{ARTICLES}}</code> comme emplacement pour les articles. Le prompt complet sera envoyé à l'IA.</p>
+			<textarea id="ai_prompt" name="ai_prompt" class="adc-textarea" rows="18"><?= htmlspecialchars((string)$cfg('prompt', $defaultPrompt)) ?></textarea>
+		</div>
+
+		<!-- ─── Section : Email ──────────────────────────────────────── -->
+		<div class="adc-section">
+			<div class="adc-section-header">
+				<span class="adc-section-icon">📧</span>
+				<h3>Rapport par email</h3>
+				<label class="adc-toggle">
+					<input type="checkbox" name="email_enabled" value="1" id="email_enabled"
+						<?= $cfg('email_enabled', false) ? 'checked' : '' ?>>
+					<span class="adc-toggle-slider"></span>
+				</label>
+			</div>
+
+			<div id="email-settings" style="<?= $cfg('email_enabled', false) ? '' : 'display:none' ?>">
+				<div class="adc-field-row">
+					<div class="adc-field-group">
+						<label class="adc-label" for="email_to">📨 Destinataire</label>
+						<input type="email" id="email_to" name="email_to"
+							value="<?= htmlspecialchars((string)$cfg('email_to')) ?>"
+							placeholder="vous@exemple.com"
+							class="adc-input">
+					</div>
+					<div class="adc-field-group">
+						<label class="adc-label" for="email_from">📤 Expéditeur (adresse)</label>
+						<input type="email" id="email_from" name="email_from"
+							value="<?= htmlspecialchars((string)$cfg('email_from')) ?>"
+							placeholder="freshrss@exemple.com"
+							class="adc-input">
+					</div>
+					<div class="adc-field-group">
+						<label class="adc-label" for="email_from_name">🏷️ Nom expéditeur</label>
+						<input type="text" id="email_from_name" name="email_from_name"
+							value="<?= htmlspecialchars((string)$cfg('email_from_name', 'FreshRSS AI Digest')) ?>"
+							placeholder="FreshRSS AI Digest"
+							class="adc-input">
+					</div>
+				</div>
+
+				<div class="adc-field-row">
+					<div class="adc-field-group">
+						<label class="adc-label" for="email_schedule">⏰ Envoi automatique</label>
+						<select id="email_schedule" name="email_schedule" class="adc-input adc-select">
+							<option value="never" <?= $cfg('email_schedule') === 'never' ? 'selected' : '' ?>>Désactivé</option>
+							<option value="daily" <?= $cfg('email_schedule') === 'daily' ? 'selected' : '' ?>>Quotidien</option>
+							<option value="weekly" <?= $cfg('email_schedule') === 'weekly' ? 'selected' : '' ?>>Hebdomadaire (lundi)</option>
+						</select>
+					</div>
+					<div class="adc-field-group">
+						<label class="adc-label" for="email_hour">🕗 Heure d'envoi</label>
+						<input type="number" id="email_hour" name="email_hour"
+							min="0" max="23"
+							value="<?= (int)$cfg('email_hour', 8) ?>"
+							class="adc-input">
+						<p class="adc-hint">Heure (0–23) à laquelle le cron envoie le rapport</p>
+					</div>
+				</div>
+
+				<div class="adc-subsection">
+					<div class="adc-subsection-header">
+						<h4>⚙️ Configuration SMTP <span class="adc-badge adc-badge-neutral">Optionnel</span></h4>
+						<p class="adc-hint">Laissez vide pour utiliser la fonction <code>mail()</code> de PHP</p>
+					</div>
+					<div class="adc-field-row">
+						<div class="adc-field-group">
+							<label class="adc-label" for="smtp_host">Hôte SMTP</label>
+							<input type="text" id="smtp_host" name="smtp_host"
+								value="<?= htmlspecialchars((string)$cfg('smtp_host')) ?>"
+								placeholder="smtp.gmail.com"
+								class="adc-input">
+						</div>
+						<div class="adc-field-group adc-field-group--small">
+							<label class="adc-label" for="smtp_port">Port</label>
+							<input type="number" id="smtp_port" name="smtp_port"
+								value="<?= (int)$cfg('smtp_port', 587) ?>"
+								placeholder="587"
+								class="adc-input">
+						</div>
+						<div class="adc-field-group">
+							<label class="adc-label" for="smtp_user">Utilisateur</label>
+							<input type="text" id="smtp_user" name="smtp_user"
+								value="<?= htmlspecialchars((string)$cfg('smtp_user')) ?>"
+								placeholder="user@gmail.com"
+								class="adc-input">
+						</div>
+						<div class="adc-field-group">
+							<label class="adc-label" for="smtp_pass">Mot de passe</label>
+							<input type="password" id="smtp_pass" name="smtp_pass"
+								value="<?= htmlspecialchars((string)$cfg('smtp_pass')) ?>"
+								class="adc-input"
+								autocomplete="new-password">
+						</div>
+					</div>
+					<label class="adc-checkbox-label">
+						<input type="checkbox" name="smtp_tls" value="1" <?= $cfg('smtp_tls', true) ? 'checked' : '' ?>>
+						Activer TLS/STARTTLS
+					</label>
+				</div>
+
+				<div class="adc-actions-inline">
+					<button type="button" class="adc-btn adc-btn-secondary" id="test-email-btn">
+						<span class="btn-icon">📧</span> Envoyer un email de test
+					</button>
+					<span id="test-email-status" class="adc-inline-status"></span>
+				</div>
+
+				<div class="adc-cron-info">
+					<h4>⏱ Configuration du cron</h4>
+					<p>Pour activer l'envoi automatique, ajoutez cette ligne à votre crontab (<code>crontab -e</code>) :</p>
+					<pre class="adc-code">0 <?= (int)$cfg('email_hour', 8) ?> * * * www-data php <?= htmlspecialchars(EXTENSIONS_PATH . '/xExtension-AIDigest/cron.php') ?> &gt;&gt; /var/log/freshrss-ai-digest.log 2&gt;&amp;1</pre>
+				</div>
+			</div>
+		</div>
+
+		<!-- ─── Actions ─────────────────────────────────────────────── -->
+		<div class="adc-actions">
+			<button type="submit" class="adc-btn adc-btn-primary">
+				<span class="btn-icon">💾</span> Enregistrer la configuration
+			</button>
+		</div>
+
+	</form>
+</div>
+
+<script>
+(function() {
+	// Données des providers
+	const providers = <?= json_encode($providers, JSON_UNESCAPED_UNICODE) ?>;
+	const defaultPrompt = <?= json_encode($defaultPrompt) ?>;
+
+	// Provider selection
+	document.querySelectorAll('input[name="ai_provider"]').forEach(radio => {
+		radio.addEventListener('change', function() {
+			const p = providers[this.value];
+			document.getElementById('field-api-key').style.display = p.needs_key ? '' : 'none';
+			document.getElementById('field-api-url').style.display = p.needs_url ? '' : 'none';
+
+			// Update model select
+			const select = document.getElementById('ai_model_select');
+			const currentVal = document.getElementById('ai_model').value;
+			select.innerHTML = '';
+			p.models.forEach(m => {
+				const opt = document.createElement('option');
+				opt.value = m;
+				opt.textContent = m;
+				if (m === currentVal) opt.selected = true;
+				select.appendChild(opt);
+			});
+			const customOpt = document.createElement('option');
+			customOpt.value = '__custom__';
+			customOpt.textContent = '✏️ Saisir un modèle personnalisé...';
+			select.appendChild(customOpt);
+
+			// Update provider card style
+			document.querySelectorAll('.adc-provider-card').forEach(card => {
+				card.classList.remove('selected');
+			});
+			this.closest('.adc-provider-card').classList.add('selected');
+		});
+	});
+
+	// Model select/input toggle
+	const modelSelect = document.getElementById('ai_model_select');
+	const modelInput = document.getElementById('ai_model');
+
+	modelSelect.addEventListener('change', function() {
+		if (this.value === '__custom__') {
+			this.style.display = 'none';
+			modelInput.style.display = '';
+			modelInput.focus();
+		} else {
+			modelInput.value = this.value;
+		}
+	});
+
+	modelInput.addEventListener('blur', function() {
+		if (this.value) {
+			modelSelect.style.display = '';
+			this.style.display = 'none';
+		}
+	});
+
+	// Initialize model value from select
+	if (modelSelect.value !== '__custom__') {
+		modelInput.value = modelSelect.value;
+	}
+
+	// Range sliders live feedback
+	const ranges = [
+		{ id: 'ai_temperature', badge: 'temp-badge', format: v => parseFloat(v).toFixed(1) },
+		{ id: 'ai_max_articles', badge: 'articles-badge', format: v => v },
+		{ id: 'ai_max_chars', badge: 'chars-badge', format: v => v },
+	];
+	ranges.forEach(({ id, badge, format }) => {
+		const input = document.getElementById(id);
+		const badgeEl = document.getElementById(badge);
+		if (input && badgeEl) {
+			input.addEventListener('input', () => badgeEl.textContent = format(input.value));
+		}
+	});
+
+	// Password toggle
+	document.querySelectorAll('.adc-toggle-password').forEach(btn => {
+		btn.addEventListener('click', function() {
+			const input = this.previousElementSibling;
+			input.type = input.type === 'password' ? 'text' : 'password';
+		});
+	});
+
+	// Email toggle
+	const emailToggle = document.getElementById('email_enabled');
+	const emailSettings = document.getElementById('email-settings');
+	emailToggle.addEventListener('change', function() {
+		emailSettings.style.display = this.checked ? '' : 'none';
+	});
+
+	// Reset prompt
+	document.getElementById('reset-prompt').addEventListener('click', function() {
+		if (confirm('Réinitialiser le prompt par défaut ?')) {
+			document.getElementById('ai_prompt').value = defaultPrompt;
+		}
+	});
+
+	// Test email
+	document.getElementById('test-email-btn').addEventListener('click', async function() {
+		const status = document.getElementById('test-email-status');
+		this.disabled = true;
+		status.textContent = '⏳ Envoi en cours...';
+		status.className = 'adc-inline-status';
+
+		try {
+			const resp = await fetch('?aiDigestAction=emailReport&get=a');
+			const data = await resp.json();
+			if (data.success) {
+				status.textContent = '✅ ' + (data.message || 'Email envoyé !');
+				status.className = 'adc-inline-status success';
+			} else {
+				status.textContent = '❌ ' + (data.error || 'Erreur');
+				status.className = 'adc-inline-status error';
+			}
+		} catch (e) {
+			status.textContent = '❌ Erreur réseau';
+			status.className = 'adc-inline-status error';
+		}
+		this.disabled = false;
+	});
+})();
+</script>
