@@ -41,10 +41,14 @@ Articles:
 	}
 
 	public function renderNavButton(): string {
+		$svg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">'
+			. '<path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.65-4.56A2.5 2.5 0 0 1 2 12a2.5 2.5 0 0 1 2.39-2.48 2.5 2.5 0 0 1 1.65-4.56A2.5 2.5 0 0 1 9.5 2Z"/>'
+			. '<path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.65-4.56A2.5 2.5 0 0 0 22 12a2.5 2.5 0 0 0-2.39-2.48 2.5 2.5 0 0 0-1.65-4.56A2.5 2.5 0 0 0 14.5 2Z"/>'
+			. '</svg>';
 		return '<li class="aid-nav-item">'
 			. '<button id="ai-digest-trigger" class="aid-trigger-btn" '
 			. 'title="Résumer les articles non lus avec l\'IA" onclick="(window._aidOpen||function(){})();return false;">'
-			. '<span class="aid-trigger-icon">🧠</span>'
+			. '<span class="aid-trigger-icon">' . $svg . '</span>'
 			. '<span class="aid-trigger-label">Résumé IA</span>'
 			. '</button>'
 			. '</li>';
@@ -85,6 +89,9 @@ Articles:
 			case 'config':
 				echo json_encode($this->getPublicConfig(), JSON_UNESCAPED_UNICODE);
 				break;
+			case 'testConnection':
+				echo json_encode($this->testConnection(), JSON_UNESCAPED_UNICODE);
+				break;
 			default:
 				echo json_encode(['error' => 'Action inconnue'], JSON_UNESCAPED_UNICODE);
 		}
@@ -92,6 +99,7 @@ Articles:
 	}
 
 	public function handleConfigureAction(): void {
+		parent::handleConfigureAction();
 		if (Minz_Request::isPost()) {
 			$provider = Minz_Request::param('ai_provider', 'openai');
 			$apiKey = Minz_Request::param('ai_api_key', '');
@@ -151,6 +159,17 @@ Articles:
 			'model' => $this->cfg('model', 'gpt-4o-mini'),
 			'max_articles' => $this->cfg('max_articles', 50),
 		];
+	}
+
+	private function testConnection(): array {
+		try {
+			$prompt = 'Reply with exactly: {"ok":true}';
+			$result = $this->callLLM($prompt);
+			$clean = trim($result);
+			return ['success' => true, 'message' => 'Connexion réussie ! Réponse : ' . mb_substr($clean, 0, 120)];
+		} catch (Exception $e) {
+			return ['success' => false, 'error' => $e->getMessage()];
+		}
 	}
 
 	// ─── Core: summary generation ──────────────────────────────────────────────

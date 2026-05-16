@@ -97,8 +97,14 @@ body.theme-dark, .theme-dark {
 }
 
 .aid-trigger-icon {
-	font-size: 16px;
+	display: inline-flex;
+	align-items: center;
 	line-height: 1;
+}
+
+.aid-trigger-icon svg {
+	width: 16px;
+	height: 16px;
 }
 
 .aid-trigger-label {
@@ -197,9 +203,16 @@ body.aid-modal-open {
 }
 
 .aid-header-icon {
-	font-size: 28px;
-	line-height: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));
+}
+
+.aid-header-icon svg {
+	width: 28px;
+	height: 28px;
+	color: white;
 }
 
 .aid-panel-header h2 {
@@ -321,8 +334,10 @@ body.aid-modal-open {
 }
 
 .aid-error-icon {
-	font-size: 24px;
 	flex-shrink: 0;
+	display: flex;
+	align-items: center;
+	color: var(--aid-error);
 }
 
 .aid-error strong {
@@ -519,12 +534,12 @@ body.aid-modal-open {
 	border: 1px solid var(--aid-border);
 	background: var(--aid-surface);
 	color: var(--aid-success);
-	font-size: 12px;
 	cursor: pointer;
 	transition: all var(--aid-transition);
 	display: flex;
 	align-items: center;
 	justify-content: center;
+	padding: 0;
 }
 
 .aid-article-read-btn:hover {

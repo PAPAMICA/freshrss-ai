@@ -94,16 +94,16 @@
 <div class="aid-panel">
   <div class="aid-panel-header">
     <div class="aid-header-left">
-      <span class="aid-header-icon">🧠</span>
+      <span class="aid-header-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.65-4.56A2.5 2.5 0 0 1 2 12a2.5 2.5 0 0 1 2.39-2.48 2.5 2.5 0 0 1 1.65-4.56A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.65-4.56A2.5 2.5 0 0 0 22 12a2.5 2.5 0 0 0-2.39-2.48 2.5 2.5 0 0 0-1.65-4.56A2.5 2.5 0 0 0 14.5 2Z"/></svg></span>
       <div>
         <h2 id="aid-title">Résumé IA</h2>
         <span class="aid-header-meta" id="aid-meta"></span>
       </div>
     </div>
     <div class="aid-header-actions">
-      <button class="aid-btn aid-btn-ghost" id="aid-email-btn" title="Envoyer par email">📧 <span>Email</span></button>
-      <button class="aid-btn aid-btn-primary" id="aid-mark-all-btn" title="Tout marquer comme lu" style="display:none">✅ <span>Tout marquer lu</span></button>
-      <button class="aid-btn aid-btn-ghost aid-close-btn" id="aid-close" title="Fermer (Échap)">✕</button>
+      <button class="aid-btn aid-btn-ghost" id="aid-email-btn" title="Envoyer par email"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="14" height="14"><rect width="20" height="16" x="2" y="4" rx="2"/><path d="m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7"/></svg> <span>Email</span></button>
+      <button class="aid-btn aid-btn-primary" id="aid-mark-all-btn" title="Tout marquer comme lu" style="display:none"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path d="M20 6 9 17l-5-5"/></svg> <span>Tout marquer lu</span></button>
+      <button class="aid-btn aid-btn-ghost aid-close-btn" id="aid-close" title="Fermer (Échap)">&#x2715;</button>
     </div>
   </div>
   <div class="aid-panel-body">
@@ -115,7 +115,7 @@
       <div class="aid-summary" id="aid-summary"></div>
     </div>
     <div class="aid-error" id="aid-error" style="display:none">
-      <span class="aid-error-icon">⚠️</span>
+      <span class="aid-error-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" width="24" height="24"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg></span>
       <div>
         <strong>Une erreur est survenue</strong>
         <p id="aid-error-msg"></p>
@@ -177,7 +177,7 @@
 
 		var toggle = document.createElement('button');
 		toggle.className = 'aid-btn aid-btn-ghost aid-articles-toggle';
-		toggle.innerHTML = '📋 Voir les ' + articles.length + ' articles résumés';
+		toggle.innerHTML = 'Voir les ' + articles.length + ' articles r\u00e9sum\u00e9s';
 
 		var list = document.createElement('div');
 		list.className = 'aid-articles-items';
@@ -185,8 +185,8 @@
 		toggle.addEventListener('click', function() {
 			var open = list.classList.toggle('aid-articles-list--open');
 			toggle.innerHTML = open
-				? '📋 Masquer la liste'
-				: '📋 Voir les ' + articles.length + ' articles résumés';
+				? 'Masquer la liste'
+				: 'Voir les ' + articles.length + ' articles r\u00e9sum\u00e9s';
 		});
 
 		articles.forEach(function(article) {
@@ -204,7 +204,7 @@
     <a href="${safeLink}" target="_blank" rel="noopener noreferrer">${safeTitle}</a>
   </span>
 </label>
-<button class="aid-article-read-btn" title="Marquer comme lu">✓</button>`;
+<button class="aid-article-read-btn" title="Marquer comme lu"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="12" height="12"><path d="M20 6 9 17l-5-5"/></svg></button>`;
 
 			item.querySelector('.aid-article-read-btn').addEventListener('click', function() {
 				markSingleRead(article.id, item);
@@ -248,12 +248,12 @@
 				if (item) item.classList.add('aid-article-item--read');
 			});
 			btn.disabled = false;
-			btn.innerHTML = '✅ <span>Tout marquer lu</span>';
+			btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path d="M20 6 9 17l-5-5"/></svg> <span>Tout marquer lu</span>';
 			updateFooterStatus();
 			showNotification((result.affected || ids.length) + ' article(s) marqué(s) comme lu(s) !', 'success');
 		}, function() {
 			btn.disabled = false;
-			btn.innerHTML = '✅ <span>Tout marquer lu</span>';
+			btn.innerHTML = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path d="M20 6 9 17l-5-5"/></svg> <span>Tout marquer lu</span>';
 		});
 	}
 
@@ -395,7 +395,7 @@
 		btn.id = 'ai-digest-trigger';
 		btn.className = 'aid-trigger-btn';
 		btn.setAttribute('title', 'Résumer les articles non lus avec l\'IA');
-		btn.innerHTML = '<span class="aid-trigger-icon">🧠</span><span class="aid-trigger-label">Résumé IA</span>';
+		btn.innerHTML = '<span class="aid-trigger-icon"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.65-4.56A2.5 2.5 0 0 1 2 12a2.5 2.5 0 0 1 2.39-2.48 2.5 2.5 0 0 1 1.65-4.56A2.5 2.5 0 0 1 9.5 2Z"/><path d="M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.65-4.56A2.5 2.5 0 0 0 22 12a2.5 2.5 0 0 0-2.39-2.48 2.5 2.5 0 0 0-1.65-4.56A2.5 2.5 0 0 0 14.5 2Z"/></svg></span><span class="aid-trigger-label">R\u00e9sum\u00e9 IA</span>';
 		btn.addEventListener('click', generateSummary);
 
 		if (container) {
