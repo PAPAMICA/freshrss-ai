@@ -827,18 +827,13 @@
 		section.className = 'tree-folder category aid-newsletter-section';
 		section.id = 'aid-newsletter-section';
 
-		var listItems = buildNewsletterListItems();
-
 		var nlCount = newsletterHistory.length;
 
 		section.innerHTML = [
 			'<a class="tree-folder-title aid-newsletter-title" href="#" data-unread="' + nlCount + '">',
-			'  <button class="dropdown-toggle aid-nl-toggle" type="button" title="Développer">',
-			'    <span class="aid-nl-icon">' + EMAILED_SVG + '</span>',
-			'  </button>',
+			'  <span class="aid-nl-icon">' + EMAILED_SVG + '</span>',
 			'  <span class="title" data-unread="' + nlCount + '">Newsletter IA</span>',
 			'</a>',
-			'<ul class="tree-folder-items aid-newsletter-list">' + listItems + '</ul>',
 		].join('\n');
 
 		// Insert before li.tree-folder.category.favorites (FreshRSS native favorites item)
@@ -860,21 +855,10 @@
 
 		// ── Event handlers ──────────────────────────────────────────────────
 
-		// Toggle open/close on title click
+		// Display all newsletters in the central stream on title click
 		section.querySelector('.aid-newsletter-title').addEventListener('click', function(e) {
 			e.preventDefault();
-			section.classList.toggle('aid-newsletter-open');
-			var list = section.querySelector('.aid-newsletter-list');
-			if (list) list.classList.toggle('active');
-		});
-
-		// Open email content on item click
-		section.querySelectorAll('.aid-newsletter-link').forEach(function(link) {
-			link.addEventListener('click', function(e) {
-				e.preventDefault();
-				var idx = parseInt(this.closest('.aid-newsletter-item').getAttribute('data-idx'), 10);
-				openNewsletterEmail(idx);
-			});
+			displayAllNewslettersInStream();
 		});
 
 		// ── Subscription form ───────────────────────────────────────────────
