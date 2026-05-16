@@ -749,7 +749,6 @@
 		} else {
 			tryInjectNewsletterSidebar();
 		}
-		populateConfigHistory();
 	}
 
 function updateNewsletterSidebarList(section) {
