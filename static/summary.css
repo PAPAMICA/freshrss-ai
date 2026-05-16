@@ -1057,6 +1057,50 @@ body.aid-modal-open {
 	background: var(--aid-surface-3, rgba(0, 0, 0, 0.04));
 }
 
+.aid-newsletter-list-item .flux_header {
+	pointer-events: none; /* le clic est géré sur le parent */
+}
+
+/* Item non lu : titre en gras */
+.aid-newsletter-list-item:not(.aid-newsletter-read) .title {
+	font-weight: 600;
+}
+
+/* Item lu : légèrement atténué */
+.aid-newsletter-list-item.aid-newsletter-read {
+	opacity: 0.6;
+}
+
+/* Bouton "marquer comme lu" sur l'item */
+.aid-nl-actions {
+	pointer-events: auto !important; /* annule le pointer-events:none du parent */
+}
+
+.aid-nl-mark-read-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	width: 28px;
+	height: 28px;
+	border: none;
+	border-radius: 50%;
+	background: transparent;
+	cursor: pointer;
+	color: var(--aid-text-3, #94a3b8);
+	transition: background var(--aid-transition, 0.2s ease), color var(--aid-transition, 0.2s ease);
+	padding: 0;
+}
+
+.aid-nl-mark-read-btn:hover:not(:disabled) {
+	background: var(--aid-primary-glow, rgba(99, 102, 241, 0.15));
+	color: var(--aid-primary, #6366f1);
+}
+
+.aid-nl-mark-read-btn:disabled {
+	opacity: 0.35;
+	cursor: default;
+}
+
 .aid-newsletter-flux .flux_header .aid-nl-stream-close {
 	display: inline-flex;
 	align-items: center;

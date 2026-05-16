@@ -755,13 +755,13 @@
 function updateNewsletterSidebarList(section) {
 	var titleEl = section.querySelector('.aid-newsletter-title .title');
 	var titleLink = section.querySelector('.aid-newsletter-title');
-	var nlCount = newsletterHistory.length;
+	var count = getUnreadCount();
 	if (titleEl) {
 		titleEl.textContent = 'Newsletter IA';
-		titleEl.setAttribute('data-unread', nlCount);
+		titleEl.setAttribute('data-unread', count);
 	}
 	if (titleLink) {
-		titleLink.setAttribute('data-unread', nlCount);
+		titleLink.setAttribute('data-unread', count);
 	}
 }
 
@@ -801,7 +801,7 @@ function updateNewsletterSidebarList(section) {
 		section.className = 'tree-folder category aid-newsletter-section';
 		section.id = 'aid-newsletter-section';
 
-	var nlCount = newsletterHistory.length;
+	var nlCount = getUnreadCount();
 
 	section.innerHTML = [
 		'<a class="tree-folder-title aid-newsletter-title" href="#" data-unread="' + nlCount + '">',
@@ -956,6 +956,61 @@ function updateNewsletterSidebarList(section) {
 			});
 	}
 
+	// ─── Newsletter read tracking (localStorage) ─────────────────────────────
+
+	function getReadNewsletterTs() {
+		try {
+			return new Set(JSON.parse(localStorage.getItem('aid-newsletter-read') || '[]'));
+		} catch (e) { return new Set(); }
+	}
+
+	function saveReadNewsletterTs(readSet) {
+		try {
+			localStorage.setItem('aid-newsletter-read', JSON.stringify(Array.from(readSet)));
+		} catch (e) {}
+	}
+
+	function getUnreadCount() {
+		var readSet = getReadNewsletterTs();
+		return newsletterHistory.filter(function(rec) { return !readSet.has(rec.ts); }).length;
+	}
+
+	function refreshNewsletterUnreadCount() {
+		var section = document.getElementById('aid-newsletter-section');
+		if (!section) return;
+		var count = getUnreadCount();
+		var titleEl = section.querySelector('.aid-newsletter-title .title');
+		var titleLink = section.querySelector('.aid-newsletter-title');
+		if (titleEl) titleEl.setAttribute('data-unread', count);
+		if (titleLink) titleLink.setAttribute('data-unread', count);
+	}
+
+	function markNewsletterRead(ts) {
+		var readSet = getReadNewsletterTs();
+		if (readSet.has(ts)) return;
+		readSet.add(ts);
+		saveReadNewsletterTs(readSet);
+		refreshNewsletterUnreadCount();
+		// Mettre à jour l'item dans la liste si elle est visible
+		var item = document.querySelector('.aid-newsletter-list-item[data-ts="' + ts + '"]');
+		if (item) {
+			item.classList.add('aid-newsletter-read');
+			item.classList.remove('not_read');
+			var btn = item.querySelector('.aid-nl-mark-read-btn');
+			if (btn) btn.disabled = true;
+		}
+	}
+
+	// ─────────────────────────────────────────────────────────────────────────
+
+	function setStreamEmptyPromptVisible(visible) {
+		var stream = document.getElementById('stream');
+		if (!stream) return;
+		stream.querySelectorAll('.prompt, #new-article').forEach(function(el) {
+			el.style.display = visible ? '' : 'none';
+		});
+	}
+
 	function openNewsletterList() {
 		var stream = document.getElementById('stream');
 		if (!stream) {
@@ -965,6 +1020,9 @@ function updateNewsletterSidebarList(section) {
 
 		// Retirer tout contenu newsletter précédent
 		stream.querySelectorAll('.aid-newsletter-flux').forEach(function(el) { el.remove(); });
+
+		// Masquer le message "aucun article" et les contrôles natifs FreshRSS
+		setStreamEmptyPromptVisible(false);
 
 		// Marquer le sidebar comme actif
 		var section = document.getElementById('aid-newsletter-section');
@@ -991,14 +1049,19 @@ function updateNewsletterSidebarList(section) {
 		}
 
 		// Afficher chaque newsletter comme un faux article flux (du plus récent au plus ancien)
+		var readSet = getReadNewsletterTs();
 		var fragment = document.createDocumentFragment();
 		newsletterHistory.forEach(function(rec, idx) {
 			var d = new Date(rec.ts * 1000);
 			var dateStr = d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+			var isRead = readSet.has(rec.ts);
 
 			var fluxEl = document.createElement('div');
-			fluxEl.className = 'flux not_read aid-newsletter-flux aid-newsletter-list-item';
+			fluxEl.className = 'flux aid-newsletter-flux aid-newsletter-list-item' + (isRead ? ' aid-newsletter-read' : ' not_read');
 			fluxEl.dataset.idx = String(idx);
+			fluxEl.dataset.ts = String(rec.ts);
+
+			var checkSvg = '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" width="14" height="14"><path d="M20 6 9 17l-5-5"/></svg>';
 
 			fluxEl.innerHTML = [
 				'<ul class="horizontal-list flux_header websitefull">',
@@ -1012,8 +1075,19 @@ function updateNewsletterSidebarList(section) {
 				'    <span class="item-element title">Digest du ' + escapeHtml(dateStr) + '</span>',
 				'    <span class="item-element date"><time>' + rec.count + ' article' + (rec.count > 1 ? 's' : '') + '</time></span>',
 				'  </li>',
+				'  <li class="item manage aid-nl-actions">',
+				'    <button class="item-element aid-nl-mark-read-btn" title="Marquer comme lu"' + (isRead ? ' disabled' : '') + '>',
+				'      ' + checkSvg,
+				'    </button>',
+				'  </li>',
 				'</ul>',
 			].join('\n');
+
+			// Bouton "marquer comme lu" — stoppe la propagation pour ne pas ouvrir la newsletter
+			fluxEl.querySelector('.aid-nl-mark-read-btn').addEventListener('click', function(e) {
+				e.stopPropagation();
+				markNewsletterRead(rec.ts);
+			});
 
 			fluxEl.addEventListener('click', function() {
 				openNewsletterEmail(idx);
@@ -1043,6 +1117,9 @@ function updateNewsletterSidebarList(section) {
 
 				var rec = newsletterHistory[idx];
 				if (!rec) return;
+
+				// Marquer automatiquement comme lu à l'ouverture
+				markNewsletterRead(rec.ts);
 				var d = new Date(rec.ts * 1000);
 				var dateStr = d.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
 
@@ -1112,7 +1189,14 @@ function updateNewsletterSidebarList(section) {
 				e.preventDefault();
 				window.removeEventListener('message', onHeightMsg);
 				fluxEl.remove();
-				openNewsletterList();
+				// Si on venait de la liste (pas d'autres flux natifs dans le stream), retour à la liste
+				var stream = document.getElementById('stream');
+				var hasNativeFlux = stream && stream.querySelector('.flux:not(.aid-newsletter-flux)');
+				if (!hasNativeFlux) {
+					openNewsletterList();
+				} else {
+					setStreamEmptyPromptVisible(true);
+				}
 			});
 
 			// Scroll to the article
@@ -1176,7 +1260,17 @@ function updateNewsletterSidebarList(section) {
 					}
 				}
 			}
-			if (shouldDecorate) decorateEmailedArticles();
+			if (shouldDecorate) {
+			decorateEmailedArticles();
+			// Si FreshRSS vient d'ajouter des articles natifs, restaurer l'affichage normal
+			var nlItems = document.querySelectorAll('.aid-newsletter-flux');
+			if (nlItems.length) {
+				nlItems.forEach(function(el) { el.remove(); });
+				setStreamEmptyPromptVisible(true);
+				var nlSection = document.getElementById('aid-newsletter-section');
+				if (nlSection) nlSection.classList.remove('active');
+			}
+		}
 		// Retry sidebar injection if the categories nav just appeared (only once history is loaded)
 		if (!document.getElementById('aid-newsletter-section') && findSidebarContainer() && historyLoaded) {
 			tryInjectNewsletterSidebar();
