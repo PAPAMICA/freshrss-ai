@@ -647,15 +647,39 @@ HTML;
 			}
 		}
 
-		$messageId = '<' . time() . '.' . random_int(1000, 9999) . '@freshrss>';
-		$headers = implode("\r\n", [
+		$fromDomain = substr(strrchr($from, '@') ?: '@freshrss.local', 1);
+		$messageId  = '<' . time() . '.' . random_int(100000, 999999) . '@' . $fromDomain . '>';
+		$boundary   = 'b_' . bin2hex(random_bytes(12));
+
+		// Plain-text fallback (required by anti-spam filters)
+		$plainText = wordwrap(
+			html_entity_decode(strip_tags(str_replace(['</p>', '<br>', '<br/>', '<br />', '</li>', '</tr>'], "\n", $htmlBody)), ENT_QUOTES, 'UTF-8'),
+			76, "\n", true
+		);
+
+		$message = implode("\r\n", [
 			'MIME-Version: 1.0',
-			'Content-Type: text/html; charset=UTF-8',
+			'Content-Type: multipart/alternative; boundary="' . $boundary . '"',
 			'From: =?UTF-8?B?' . base64_encode($fromName) . '?= <' . $from . '>',
 			'To: ' . $to,
 			'Subject: =?UTF-8?B?' . base64_encode($subject) . '?=',
 			'Message-ID: ' . $messageId,
 			'Date: ' . date('r'),
+			'X-Mailer: FreshRSS AI Digest',
+			'',
+			'--' . $boundary,
+			'Content-Type: text/plain; charset=UTF-8',
+			'Content-Transfer-Encoding: quoted-printable',
+			'',
+			quoted_printable_encode($plainText),
+			'',
+			'--' . $boundary,
+			'Content-Type: text/html; charset=UTF-8',
+			'Content-Transfer-Encoding: quoted-printable',
+			'',
+			quoted_printable_encode($htmlBody),
+			'',
+			'--' . $boundary . '--',
 		]);
 
 		$send('MAIL FROM:<' . $from . '>');
@@ -664,7 +688,9 @@ HTML;
 		$recv();
 		$send('DATA');
 		$recv();
-		$send($headers . "\r\n\r\n" . $htmlBody . "\r\n.");
+		// Dot-stuffing: any line starting with "." must be doubled per RFC 5321
+		$stuffed = preg_replace('/\r\n\./', "\r\n..", $message);
+		fputs($socket, $stuffed . "\r\n.\r\n");
 		$dataResp = $recv();
 		$send('QUIT');
 		fclose($socket);
