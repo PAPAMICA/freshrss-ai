@@ -1047,6 +1047,35 @@ body.aid-modal-open {
 	/* inherits .flux styles from FreshRSS */
 }
 
+/* Enfants de #stream masqués pendant la vue newsletter */
+.aid-nl-stream-hidden {
+	display: none !important;
+}
+
+/* Contenu expandable des items newsletter (caché par défaut) */
+.aid-nl-content {
+	display: none;
+}
+
+.aid-nl-content.aid-nl-content--open {
+	display: block;
+}
+
+/* iframe : le height HTML attribute est utilisé à la place des styles inline */
+.aid-nl-stream-iframe {
+	width: 100%;
+	height: 600px; /* valeur par défaut, écrasée par l'attribut height */
+	border: none;
+	background: #fff;
+	display: block;
+}
+
+/* Animation suppression d'une ligne d'abonné */
+.aid-sub-row-removing {
+	opacity: 0;
+	transition: opacity 0.3s;
+}
+
 /* Items de la liste des newsletters (vue liste dans #stream) */
 .aid-newsletter-list-item {
 	cursor: pointer;
@@ -1119,13 +1148,8 @@ body.aid-modal-open {
 	overflow: hidden;
 }
 
+/* overflow-x pour les emails plus larges que le conteneur */
 .aid-nl-stream-iframe {
-	display: block;
-	width: 100%;
-	min-height: 500px;
-	border: none;
-	background: #fff;
-	/* Allow horizontal scroll if email wider than container */
 	overflow-x: auto;
 }
 

@@ -928,11 +928,10 @@ function updateNewsletterSidebarList(section) {
 					fetch(buildUrl('unsubscribe', { email: email }))
 						.then(function(r) { return r.json(); })
 						.then(function(data) {
-							if (data.success) {
-								var row = btn.closest('tr');
-								row.style.transition = 'opacity .3s';
-								row.style.opacity = '0';
-								setTimeout(function() {
+					if (data.success) {
+							var row = btn.closest('tr');
+							row.classList.add('aid-sub-row-removing');
+							setTimeout(function() {
 									row.remove();
 									if (!container.querySelector('tbody tr')) {
 										container.innerHTML = '<p class="aid-hint">Aucun abonné pour l\'instant.</p>';
@@ -1008,7 +1007,7 @@ function updateNewsletterSidebarList(section) {
 		// Cache/restaure TOUS les enfants directs de #stream qui ne sont pas les nôtres
 		Array.from(stream.children).forEach(function(el) {
 			if (!el.classList.contains('aid-newsletter-flux')) {
-				el.style.display = visible ? '' : 'none';
+				el.classList.toggle('aid-nl-stream-hidden', !visible);
 			}
 		});
 	}
@@ -1083,7 +1082,7 @@ function updateNewsletterSidebarList(section) {
 				'    </button>',
 				'  </li>',
 				'</ul>',
-				'<article class="flux_content aid-nl-content" style="display:none">',
+				'<article class="flux_content aid-nl-content">',
 				'  <div class="content content_large">',
 				'    <div class="aid-nl-stream-body"></div>',
 				'  </div>',
@@ -1118,18 +1117,18 @@ function updateNewsletterSidebarList(section) {
 		if (isOpen) {
 			// Fermer
 			fluxEl.classList.remove('active', 'current');
-			content.style.display = 'none';
+			content.classList.remove('aid-nl-content--open');
 		} else {
 			// Fermer tout autre item ouvert
 			document.querySelectorAll('.aid-newsletter-list-item.active').forEach(function(el) {
 				el.classList.remove('active', 'current');
 				var c = el.querySelector('.aid-nl-content');
-				if (c) c.style.display = 'none';
+				if (c) c.classList.remove('aid-nl-content--open');
 			});
 
 			// Ouvrir
 			fluxEl.classList.add('active', 'current');
-			content.style.display = '';
+			content.classList.add('aid-nl-content--open');
 
 			// Marquer comme lu
 			markNewsletterRead(ts);
@@ -1144,7 +1143,7 @@ function updateNewsletterSidebarList(section) {
 
 				function onHeightMsg(e) {
 					if (e.data && e.data.type === 'aid-nl-height' && e.data.h > 100) {
-						iframe.style.height = e.data.h + 'px';
+						iframe.setAttribute('height', String(Math.round(e.data.h)));
 					}
 				}
 				window.addEventListener('message', onHeightMsg);
@@ -1152,8 +1151,8 @@ function updateNewsletterSidebarList(section) {
 				iframe.src = buildUrl('emailRender', { idx: idx });
 
 				setTimeout(function() {
-					if (parseInt(iframe.style.height, 10) < 200) {
-						iframe.style.height = '600px';
+					if (!iframe.getAttribute('height') || parseInt(iframe.getAttribute('height'), 10) < 200) {
+						iframe.setAttribute('height', '600');
 					}
 				}, 2000);
 
@@ -1241,20 +1240,20 @@ function updateNewsletterSidebarList(section) {
 			// (avoids parent-page CSP blocking email inline styles/scripts)
 			iframe.src = buildUrl('emailRender', { idx: idx });
 
-			// Listen for height messages from the iframe
-			function onHeightMsg(e) {
-				if (e.data && e.data.type === 'aid-nl-height' && e.data.h > 100) {
-					iframe.style.height = e.data.h + 'px';
-				}
+		// Listen for height messages from the iframe
+		function onHeightMsg(e) {
+			if (e.data && e.data.type === 'aid-nl-height' && e.data.h > 100) {
+				iframe.setAttribute('height', String(Math.round(e.data.h)));
 			}
-			window.addEventListener('message', onHeightMsg);
+		}
+		window.addEventListener('message', onHeightMsg);
 
-			// Fallback height if postMessage doesn't fire within 2s
-			setTimeout(function() {
-				if (parseInt(iframe.style.height, 10) < 200) {
-					iframe.style.height = '600px';
-				}
-			}, 2000);
+		// Fallback height if postMessage doesn't fire within 2s
+		setTimeout(function() {
+			if (!iframe.getAttribute('height') || parseInt(iframe.getAttribute('height'), 10) < 200) {
+				iframe.setAttribute('height', '600');
+			}
+		}, 2000);
 
 			// Close button — retour à la liste des newsletters
 			fluxEl.querySelector('.aid-nl-stream-close').addEventListener('click', function(e) {
