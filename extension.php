@@ -60,6 +60,11 @@ Articles:
 			return;
 		}
 
+		// Vider tous les buffers de sortie ouverts par FreshRSS
+		while (ob_get_level() > 0) {
+			ob_end_clean();
+		}
+
 		if (!FreshRSS_Auth::isLogged()) {
 			http_response_code(401);
 			header('Content-Type: application/json; charset=utf-8');

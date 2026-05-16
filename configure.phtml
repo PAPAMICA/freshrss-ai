@@ -31,89 +31,151 @@ Articles:
 {{ARTICLES}}';
 
 $providers = [
-	'openai'    => ['label' => 'OpenAI',               'url' => 'https://api.openai.com/v1',         'models' => ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'], 'needs_key' => true,  'needs_url' => false],
-	'anthropic' => ['label' => 'Anthropic Claude',     'url' => 'https://api.anthropic.com',          'models' => ['claude-3-5-haiku-20241022', 'claude-opus-4-5', 'claude-sonnet-4-5', 'claude-3-5-sonnet-20241022', 'claude-3-opus-20240229'], 'needs_key' => true,  'needs_url' => false],
-	'mistral'   => ['label' => 'Mistral AI',           'url' => 'https://api.mistral.ai/v1',          'models' => ['mistral-small-latest', 'mistral-large-latest', 'open-mistral-7b'], 'needs_key' => true,  'needs_url' => false],
-	'ollama'    => ['label' => 'Ollama (local)',        'url' => 'http://localhost:11434',             'models' => ['llama3.2', 'llama3.1', 'mistral', 'gemma2', 'qwen2.5', 'phi3'],   'needs_key' => false, 'needs_url' => true],
-	'custom'    => ['label' => 'Compatible OpenAI',    'url' => '',                                   'models' => [],                                                                    'needs_key' => true,  'needs_url' => true],
+	'openai'    => ['label' => 'OpenAI',            'url' => 'https://api.openai.com/v1',  'models' => ['gpt-4o-mini', 'gpt-4o', 'gpt-4.1', 'gpt-4.1-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'], 'needs_key' => true,  'needs_url' => false],
+	'anthropic' => ['label' => 'Anthropic Claude',  'url' => 'https://api.anthropic.com',  'models' => ['claude-3-5-haiku-20241022', 'claude-opus-4-5', 'claude-sonnet-4-5', 'claude-3-5-sonnet-20241022'], 'needs_key' => true, 'needs_url' => false],
+	'mistral'   => ['label' => 'Mistral AI',        'url' => 'https://api.mistral.ai/v1',  'models' => ['mistral-small-latest', 'mistral-large-latest', 'open-mistral-7b'], 'needs_key' => true, 'needs_url' => false],
+	'ollama'    => ['label' => 'Ollama (local)',     'url' => 'http://localhost:11434',     'models' => ['llama3.2', 'llama3.1', 'mistral', 'gemma2', 'qwen2.5', 'phi3'], 'needs_key' => false, 'needs_url' => true],
+	'custom'    => ['label' => 'Compatible OpenAI', 'url' => '',                           'models' => [], 'needs_key' => true, 'needs_url' => true],
 ];
 
 $currentProvider = (string)$cfg('provider', 'openai');
 $currentModel    = (string)$cfg('model', 'gpt-4o-mini');
 
-// SVG icon helper — size injected directly on <svg> to avoid CSS override by FreshRSS
-function icon(string $name, int $size = 16): string {
-	$S = "style=\"display:block;flex-shrink:0\" width=\"{$size}\" height=\"{$size}\"";
-	$icons = [
-		'brain'   => "<svg {$S} xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.65-4.56A2.5 2.5 0 0 1 2 12a2.5 2.5 0 0 1 2.39-2.48 2.5 2.5 0 0 1 1.65-4.56A2.5 2.5 0 0 1 9.5 2Z\"/><path d=\"M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.65-4.56A2.5 2.5 0 0 0 22 12a2.5 2.5 0 0 0-2.39-2.48 2.5 2.5 0 0 0-1.65-4.56A2.5 2.5 0 0 0 14.5 2Z\"/></svg>",
-		'key'     => "<svg {$S} xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"7.5\" cy=\"15.5\" r=\"5.5\"/><path d=\"m21 2-9.6 9.6\"/><path d=\"m15.5 7.5 3 3L22 7l-3-3\"/></svg>",
-		'globe'   => "<svg {$S} xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/><path d=\"M2 12h20\"/></svg>",
-		'cpu'     => "<svg {$S} xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"2\"/><rect x=\"9\" y=\"9\" width=\"6\" height=\"6\"/><path d=\"M15 2v2M9 2v2M15 20v2M9 20v2M2 15h2M2 9h2M20 15h2M20 9h2\"/></svg>",
-		'mail'    => "<svg {$S} xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect width=\"20\" height=\"16\" x=\"2\" y=\"4\" rx=\"2\"/><path d=\"m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7\"/></svg>",
-		'text'    => "<svg {$S} xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M17 6.1H3\"/><path d=\"M21 12.1H3\"/><path d=\"M15.1 18H3\"/></svg>",
-		'save'    => "<svg {$S} xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z\"/><path d=\"M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7\"/><path d=\"M7 3v4a1 1 0 0 0 1 1h7\"/></svg>",
-		'plug'    => "<svg {$S} xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M12 22v-5\"/><path d=\"M9 8V2\"/><path d=\"M15 8V2\"/><path d=\"M18 8H6a2 2 0 0 0-2 2v2a8 8 0 0 0 16 0v-2a2 2 0 0 0-2-2Z\"/></svg>",
-		'refresh' => "<svg {$S} xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/><path d=\"M21 3v5h-5\"/><path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/><path d=\"M8 16H3v5\"/></svg>",
-		'eye'     => "<svg {$S} xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/></svg>",
-		'clock'   => "<svg {$S} xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><circle cx=\"12\" cy=\"12\" r=\"10\"/><polyline points=\"12 6 12 12 16 14\"/></svg>",
-		'server'  => "<svg {$S} xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><rect width=\"20\" height=\"8\" x=\"2\" y=\"2\" rx=\"2\" ry=\"2\"/><rect width=\"20\" height=\"8\" x=\"2\" y=\"14\" rx=\"2\" ry=\"2\"/><line x1=\"6\" x2=\"6.01\" y1=\"6\" y2=\"6\"/><line x1=\"6\" x2=\"6.01\" y1=\"18\" y2=\"18\"/></svg>",
-		'check'   => "<svg {$S} xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\"><path d=\"M20 6 9 17l-5-5\"/></svg>",
+// SVG icon helper — renamed aidIcon() to avoid conflicts with FreshRSS global scope
+// Size and display are set inline on the SVG to avoid any external CSS override
+function aidIcon(string $name, int $size = 16): string {
+	$w = $size; $h = $size;
+	$base = "xmlns=\"http://www.w3.org/2000/svg\" viewBox=\"0 0 24 24\" fill=\"none\" stroke=\"currentColor\" stroke-width=\"2\" stroke-linecap=\"round\" stroke-linejoin=\"round\" width=\"{$w}\" height=\"{$h}\" style=\"display:inline-block;vertical-align:middle;flex-shrink:0\"";
+	$paths = [
+		'brain'   => "<path d=\"M9.5 2A2.5 2.5 0 0 1 12 4.5v15a2.5 2.5 0 0 1-4.96-.46 2.5 2.5 0 0 1-1.65-4.56A2.5 2.5 0 0 1 2 12a2.5 2.5 0 0 1 2.39-2.48 2.5 2.5 0 0 1 1.65-4.56A2.5 2.5 0 0 1 9.5 2Z\"/><path d=\"M14.5 2A2.5 2.5 0 0 0 12 4.5v15a2.5 2.5 0 0 0 4.96-.46 2.5 2.5 0 0 0 1.65-4.56A2.5 2.5 0 0 0 22 12a2.5 2.5 0 0 0-2.39-2.48 2.5 2.5 0 0 0-1.65-4.56A2.5 2.5 0 0 0 14.5 2Z\"/>",
+		'key'     => "<circle cx=\"7.5\" cy=\"15.5\" r=\"5.5\"/><path d=\"m21 2-9.6 9.6\"/><path d=\"m15.5 7.5 3 3L22 7l-3-3\"/>",
+		'globe'   => "<circle cx=\"12\" cy=\"12\" r=\"10\"/><path d=\"M12 2a14.5 14.5 0 0 0 0 20 14.5 14.5 0 0 0 0-20\"/><path d=\"M2 12h20\"/>",
+		'cpu'     => "<rect x=\"4\" y=\"4\" width=\"16\" height=\"16\" rx=\"2\"/><rect x=\"9\" y=\"9\" width=\"6\" height=\"6\"/><path d=\"M15 2v2M9 2v2M15 20v2M9 20v2M2 15h2M2 9h2M20 15h2M20 9h2\"/>",
+		'mail'    => "<rect width=\"20\" height=\"16\" x=\"2\" y=\"4\" rx=\"2\"/><path d=\"m22 7-8.97 5.7a1.94 1.94 0 0 1-2.06 0L2 7\"/>",
+		'text'    => "<path d=\"M17 6.1H3\"/><path d=\"M21 12.1H3\"/><path d=\"M15.1 18H3\"/>",
+		'save'    => "<path d=\"M15.2 3a2 2 0 0 1 1.4.6l3.8 3.8a2 2 0 0 1 .6 1.4V19a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2z\"/><path d=\"M17 21v-7a1 1 0 0 0-1-1H8a1 1 0 0 0-1 1v7\"/><path d=\"M7 3v4a1 1 0 0 0 1 1h7\"/>",
+		'plug'    => "<path d=\"M12 22v-5\"/><path d=\"M9 8V2\"/><path d=\"M15 8V2\"/><path d=\"M18 8H6a2 2 0 0 0-2 2v2a8 8 0 0 0 16 0v-2a2 2 0 0 0-2-2Z\"/>",
+		'refresh' => "<path d=\"M3 12a9 9 0 0 1 9-9 9.75 9.75 0 0 1 6.74 2.74L21 8\"/><path d=\"M21 3v5h-5\"/><path d=\"M21 12a9 9 0 0 1-9 9 9.75 9.75 0 0 1-6.74-2.74L3 16\"/><path d=\"M8 16H3v5\"/>",
+		'eye'     => "<path d=\"M2 12s3-7 10-7 10 7 10 7-3 7-10 7-10-7-10-7Z\"/><circle cx=\"12\" cy=\"12\" r=\"3\"/>",
+		'clock'   => "<circle cx=\"12\" cy=\"12\" r=\"10\"/><polyline points=\"12 6 12 12 16 14\"/>",
+		'server'  => "<rect width=\"20\" height=\"8\" x=\"2\" y=\"2\" rx=\"2\" ry=\"2\"/><rect width=\"20\" height=\"8\" x=\"2\" y=\"14\" rx=\"2\" ry=\"2\"/><line x1=\"6\" x2=\"6.01\" y1=\"6\" y2=\"6\"/><line x1=\"6\" x2=\"6.01\" y1=\"18\" y2=\"18\"/>",
+		'check'   => "<path d=\"M20 6 9 17l-5-5\"/>",
 	];
-	$wrapStyle = 'style="display:inline-flex;align-items:center;flex-shrink:0;margin-right:5px;vertical-align:middle"';
-	return '<span ' . $wrapStyle . '>' . ($icons[$name] ?? '') . '</span>';
+	$inner = $paths[$name] ?? '';
+	return "<svg {$base}>{$inner}</svg>";
 }
+
+$formAction = '?c=extension&a=configure&ext_name=' . urlencode($this->getName());
 ?>
 
 <div class="ai-digest-config">
 
+<style>
+.ai-digest-config { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; max-width: 860px; margin: 0 auto; padding: 0 0 40px; color: #f1f5f9 }
+.adc-header { display:flex; align-items:center; gap:16px; padding:20px 24px; background:linear-gradient(135deg,#6366f1,#4f46e5); border-radius:12px; margin-bottom:20px; color:#fff }
+.adc-title  { margin:0 !important; font-size:22px !important; font-weight:700 !important; color:#fff !important }
+.adc-subtitle { margin:4px 0 0 !important; opacity:.8; font-size:13px !important }
+.adc-section { background:#1e293b; border:1px solid #334155; border-radius:12px; padding:20px 24px; margin-bottom:16px }
+.adc-section-header { display:flex; align-items:center; gap:8px; margin-bottom:18px }
+.adc-section-header h3 { margin:0; font-size:15px; font-weight:600; color:#f1f5f9; flex:1 }
+.adc-label { display:flex; align-items:center; gap:6px; font-size:13px; font-weight:600; color:#94a3b8; margin-bottom:6px }
+.adc-input { width:100%; padding:9px 12px; background:#0f172a; border:1px solid #334155; border-radius:8px; color:#f1f5f9; font-size:14px; box-sizing:border-box; font-family:inherit }
+.adc-input:focus { outline:none; border-color:#6366f1; box-shadow:0 0 0 3px rgba(99,102,241,.2) }
+.adc-select { cursor:pointer }
+.adc-textarea { width:100%; padding:12px; background:#0f172a; border:1px solid #334155; border-radius:8px; color:#f1f5f9; font-size:13px; font-family:'SF Mono','Fira Code',monospace; line-height:1.6; resize:vertical; box-sizing:border-box }
+.adc-textarea:focus { outline:none; border-color:#6366f1 }
+.adc-hint { margin:5px 0 0 !important; font-size:12px !important; color:#64748b !important }
+.adc-hint code { background:#1e293b; padding:1px 5px; border-radius:4px; font-size:11px }
+.adc-field-group { margin-bottom:16px }
+.adc-field-row { display:grid; grid-template-columns:repeat(auto-fit,minmax(180px,1fr)); gap:16px }
+.adc-badge { display:inline-block; background:#6366f1; color:#fff; border-radius:20px; padding:2px 8px; font-size:11px; font-weight:600; margin-left:6px }
+.adc-badge-neutral { background:#334155; color:#94a3b8 }
+.adc-range { width:100%; margin-top:6px; accent-color:#6366f1; cursor:pointer }
+.adc-provider-grid { display:grid; grid-template-columns:repeat(auto-fill,minmax(130px,1fr)); gap:8px; margin-bottom:18px }
+.adc-provider-card { display:flex; flex-direction:column; align-items:center; padding:12px 8px; border:2px solid #334155; border-radius:10px; cursor:pointer; background:#0f172a; transition:all .15s }
+.adc-provider-card:hover { border-color:#6366f1 }
+.adc-provider-card.selected { border-color:#6366f1; background:rgba(99,102,241,.12) }
+.adc-provider-card input[type=radio] { display:none }
+.adc-provider-name { font-size:12px; font-weight:500; color:#94a3b8; text-align:center; margin-top:4px }
+.adc-provider-card.selected .adc-provider-name { color:#818cf8 }
+.adc-input-wrapper { position:relative; display:flex }
+.adc-input-password { padding-right:40px }
+.adc-toggle-password { position:absolute; right:8px; top:50%; transform:translateY(-50%); background:none; border:none; cursor:pointer; color:#64748b; display:flex; align-items:center; padding:4px }
+.adc-toggle-password:hover { color:#94a3b8 }
+.adc-model-row { display:flex; gap:8px; align-items:flex-start }
+.adc-model-row .adc-input { flex:1 }
+.adc-btn { display:inline-flex; align-items:center; gap:6px; padding:8px 14px; border-radius:8px; font-size:13px; font-weight:500; border:1px solid transparent; cursor:pointer; transition:all .15s; white-space:nowrap }
+.adc-btn:disabled { opacity:.6; cursor:not-allowed }
+.adc-btn-primary { background:#6366f1; color:#fff; border-color:#6366f1 }
+.adc-btn-primary:hover:not(:disabled) { background:#4f46e5 }
+.adc-btn-secondary { background:#1e293b; color:#94a3b8; border-color:#334155 }
+.adc-btn-secondary:hover:not(:disabled) { border-color:#6366f1; color:#818cf8 }
+.adc-btn-ghost { background:transparent; color:#64748b; border-color:#334155; font-size:12px; padding:5px 10px }
+.adc-btn-ghost:hover:not(:disabled) { color:#94a3b8; border-color:#475569 }
+.adc-toggle { position:relative; display:inline-block; width:44px; height:24px; flex-shrink:0 }
+.adc-toggle input { opacity:0; width:0; height:0 }
+.adc-toggle-slider { position:absolute; cursor:pointer; inset:0; background:#334155; border-radius:24px; transition:.2s }
+.adc-toggle-slider::before { content:''; position:absolute; height:18px; width:18px; left:3px; bottom:3px; background:#fff; border-radius:50%; transition:.2s; box-shadow:0 1px 3px rgba(0,0,0,.3) }
+.adc-toggle input:checked + .adc-toggle-slider { background:#6366f1 }
+.adc-toggle input:checked + .adc-toggle-slider::before { transform:translateX(20px) }
+.adc-subsection { margin-top:16px; padding:16px; background:#0f172a; border-radius:8px; border:1px solid #334155 }
+.adc-checkbox-label { display:flex; align-items:center; gap:8px; font-size:13px; cursor:pointer; color:#94a3b8; margin-top:10px }
+.adc-checkbox-label input { accent-color:#6366f1; width:15px; height:15px }
+.adc-actions { display:flex; justify-content:flex-end; padding-top:8px }
+.adc-actions-inline { display:flex; align-items:center; gap:12px; margin-top:14px }
+.adc-inline-status { font-size:13px }
+.adc-inline-status.success { color:#10b981 }
+.adc-inline-status.error { color:#ef4444 }
+.adc-test-result { margin-top:10px; padding:10px 14px; border-radius:8px; font-size:13px; line-height:1.5 }
+.adc-test-result.success { background:#064e3b; border:1px solid #10b981; color:#6ee7b7 }
+.adc-test-result.error { background:#450a0a; border:1px solid #ef4444; color:#fca5a5 }
+.adc-cron-info { margin-top:16px; padding:14px 16px; background:rgba(99,102,241,.08); border-radius:8px; border-left:3px solid #6366f1 }
+.adc-cron-info p { margin:6px 0 8px; font-size:13px; color:#64748b }
+.adc-code { background:#0f172a; border:1px solid #334155; border-radius:8px; padding:10px 14px; font-family:'SF Mono','Fira Code',monospace; font-size:12px; color:#e2e8f0; overflow-x:auto; white-space:pre; margin:0 }
+</style>
+
 	<div class="adc-header">
-		<div class="adc-header-icon"><?= icon('brain', 36) ?></div>
+		<?= aidIcon('brain', 32) ?>
 		<div>
 			<h2 class="adc-title">AI Digest</h2>
 			<p class="adc-subtitle">Résumé intelligent de vos flux RSS via intelligence artificielle</p>
 		</div>
 	</div>
 
-	<form method="post" action="" class="adc-form">
-		<input type="hidden" name="token" value="<?= Minz_Session::param('token') ?>">
+	<form method="post" action="<?= htmlspecialchars($formAction) ?>" class="adc-form">
+		<input type="hidden" name="token" value="<?= htmlspecialchars((string)Minz_Session::param('token', '')) ?>">
 
-		<!-- ─── Section : Fournisseur IA ─────────────────────────────── -->
+		<!-- ─── Fournisseur IA ──────────────────────────────────────── -->
 		<div class="adc-section">
 			<div class="adc-section-header">
-				<?= icon('plug') ?>
+				<?= aidIcon('plug') ?>
 				<h3>Fournisseur IA</h3>
 			</div>
 
-			<div class="adc-provider-grid" id="provider-grid">
+			<div class="adc-provider-grid">
 				<?php foreach ($providers as $key => $p): ?>
-				<label class="adc-provider-card <?= $currentProvider === $key ? 'selected' : '' ?>" data-provider="<?= $key ?>">
+				<label class="adc-provider-card <?= $currentProvider === $key ? 'selected' : '' ?>">
 					<input type="radio" name="ai_provider" value="<?= $key ?>" <?= $currentProvider === $key ? 'checked' : '' ?>>
 					<span class="adc-provider-name"><?= htmlspecialchars($p['label']) ?></span>
 				</label>
 				<?php endforeach; ?>
 			</div>
 
-			<div class="adc-field-group" id="field-api-key" style="<?= $providers[$currentProvider]['needs_key'] ? '' : 'display:none' ?>">
-				<label class="adc-label" for="ai_api_key">
-					<?= icon('key') ?> Clé API
-				</label>
+			<div class="adc-field-group" id="aid-field-key" style="<?= $providers[$currentProvider]['needs_key'] ? '' : 'display:none' ?>">
+				<label class="adc-label"><?= aidIcon('key') ?> Clé API</label>
 				<div class="adc-input-wrapper">
-					<input type="password" id="ai_api_key" name="ai_api_key"
+					<input type="password" id="aid-api-key" name="ai_api_key"
 						value="<?= htmlspecialchars((string)$cfg('api_key')) ?>"
 						placeholder="sk-... ou votre clé API"
 						class="adc-input adc-input-password"
 						autocomplete="new-password">
-					<button type="button" class="adc-toggle-password" title="Afficher/masquer" id="toggle-pwd">
-						<?= icon('eye') ?>
-					</button>
+					<button type="button" class="adc-toggle-password" id="aid-toggle-pwd" title="Afficher/masquer"><?= aidIcon('eye') ?></button>
 				</div>
 			</div>
 
-			<div class="adc-field-group" id="field-api-url">
-				<label class="adc-label" for="ai_api_base_url">
-					<?= icon('globe') ?> URL de base de l'API
-				</label>
-				<input type="url" id="ai_api_base_url" name="ai_api_base_url"
+			<div class="adc-field-group">
+				<label class="adc-label"><?= aidIcon('globe') ?> URL de base de l'API</label>
+				<input type="url" id="aid-api-url" name="ai_api_base_url"
 					value="<?= htmlspecialchars((string)$cfg('api_base_url', $providers[$currentProvider]['url'])) ?>"
 					placeholder="https://api.openai.com/v1"
 					class="adc-input"
@@ -122,11 +184,9 @@ function icon(string $name, int $size = 16): string {
 			</div>
 
 			<div class="adc-field-group">
-				<label class="adc-label" for="ai_model">
-					<?= icon('cpu') ?> Modèle
-				</label>
+				<label class="adc-label"><?= aidIcon('cpu') ?> Modèle</label>
 				<div class="adc-model-row">
-					<select id="ai_model_select" class="adc-input adc-select">
+					<select id="aid-model-select" class="adc-input adc-select">
 						<?php
 						$modelsList = $providers[$currentProvider]['models'];
 						foreach ($modelsList as $m): ?>
@@ -137,153 +197,111 @@ function icon(string $name, int $size = 16): string {
 						<?php endif; ?>
 						<option value="__custom__">-- Saisir un modèle --</option>
 					</select>
-					<input type="text" id="ai_model" name="ai_model"
+					<input type="text" id="aid-model" name="ai_model"
 						value="<?= htmlspecialchars($currentModel) ?>"
 						placeholder="Nom du modèle"
 						class="adc-input"
 						style="display:none">
-					<button type="button" class="adc-btn adc-btn-secondary" id="test-api-btn">
-						<?= icon('plug') ?> Tester la connexion
+					<button type="button" class="adc-btn adc-btn-secondary" id="aid-test-btn">
+						<?= aidIcon('plug') ?> Tester la connexion
 					</button>
 				</div>
-				<div id="test-api-result" class="adc-test-result" style="display:none"></div>
+				<div id="aid-test-result" class="adc-test-result" style="display:none"></div>
 			</div>
 
 			<div class="adc-field-row">
 				<div class="adc-field-group">
-					<label class="adc-label" for="ai_temperature">
-						Température &nbsp;<span class="adc-badge" id="temp-badge"><?= number_format((float)$cfg('temperature', 0.3), 1) ?></span>
-					</label>
-					<input type="range" id="ai_temperature" name="ai_temperature"
-						min="0" max="2" step="0.1"
-						value="<?= htmlspecialchars((string)$cfg('temperature', '0.3')) ?>"
-						class="adc-range">
-					<p class="adc-hint">0 = déterministe &nbsp;·&nbsp; 1 = créatif &nbsp;·&nbsp; 2 = aléatoire</p>
+					<label class="adc-label">Température <span class="adc-badge" id="aid-temp-badge"><?= number_format((float)$cfg('temperature', 0.3), 1) ?></span></label>
+					<input type="range" id="aid-temp" name="ai_temperature" min="0" max="2" step="0.1" value="<?= htmlspecialchars((string)$cfg('temperature', '0.3')) ?>" class="adc-range">
+					<p class="adc-hint">0 = déterministe · 1 = créatif · 2 = aléatoire</p>
 				</div>
 				<div class="adc-field-group">
-					<label class="adc-label" for="ai_max_articles">
-						Articles max &nbsp;<span class="adc-badge" id="articles-badge"><?= (int)$cfg('max_articles', 50) ?></span>
-					</label>
-					<input type="range" id="ai_max_articles" name="ai_max_articles"
-						min="5" max="200" step="5"
-						value="<?= (int)$cfg('max_articles', 50) ?>"
-						class="adc-range">
+					<label class="adc-label">Articles max <span class="adc-badge" id="aid-art-badge"><?= (int)$cfg('max_articles', 50) ?></span></label>
+					<input type="range" id="aid-art" name="ai_max_articles" min="5" max="200" step="5" value="<?= (int)$cfg('max_articles', 50) ?>" class="adc-range">
 					<p class="adc-hint">Nombre maximum d'articles envoyés à l'IA</p>
 				</div>
 				<div class="adc-field-group">
-					<label class="adc-label" for="ai_max_chars">
-						Caractères/article &nbsp;<span class="adc-badge" id="chars-badge"><?= (int)$cfg('max_chars', 2000) ?></span>
-					</label>
-					<input type="range" id="ai_max_chars" name="ai_max_chars"
-						min="200" max="10000" step="100"
-						value="<?= (int)$cfg('max_chars', 2000) ?>"
-						class="adc-range">
+					<label class="adc-label">Caractères/article <span class="adc-badge" id="aid-chr-badge"><?= (int)$cfg('max_chars', 2000) ?></span></label>
+					<input type="range" id="aid-chr" name="ai_max_chars" min="200" max="10000" step="100" value="<?= (int)$cfg('max_chars', 2000) ?>" class="adc-range">
 					<p class="adc-hint">Taille max du contenu par article</p>
 				</div>
 			</div>
 		</div>
 
-		<!-- ─── Section : Prompt ─────────────────────────────────────── -->
+		<!-- ─── Prompt ──────────────────────────────────────────────── -->
 		<div class="adc-section">
 			<div class="adc-section-header">
-				<?= icon('text') ?>
+				<?= aidIcon('text') ?>
 				<h3>Prompt système</h3>
-				<button type="button" class="adc-btn adc-btn-ghost" id="reset-prompt">
-					<?= icon('refresh') ?> Réinitialiser
-				</button>
+				<button type="button" class="adc-btn adc-btn-ghost" id="aid-reset-prompt"><?= aidIcon('refresh') ?> Réinitialiser</button>
 			</div>
-			<p class="adc-hint">Utilisez <code>{{ARTICLES}}</code> comme emplacement pour les articles.</p>
-			<textarea id="ai_prompt" name="ai_prompt" class="adc-textarea" rows="16"><?= htmlspecialchars((string)$cfg('prompt', $defaultPrompt)) ?></textarea>
+			<p class="adc-hint" style="margin-bottom:10px">Utilisez <code>{{ARTICLES}}</code> comme emplacement pour les articles.</p>
+			<textarea id="aid-prompt" name="ai_prompt" class="adc-textarea" rows="16"><?= htmlspecialchars((string)$cfg('prompt', $defaultPrompt)) ?></textarea>
 		</div>
 
-		<!-- ─── Section : Email ──────────────────────────────────────── -->
+		<!-- ─── Email ───────────────────────────────────────────────── -->
 		<div class="adc-section">
 			<div class="adc-section-header">
-				<?= icon('mail') ?>
+				<?= aidIcon('mail') ?>
 				<h3>Rapport par email</h3>
-				<label class="adc-toggle" title="Activer les rapports email">
-					<input type="checkbox" name="email_enabled" value="1" id="email_enabled"
-						<?= $cfg('email_enabled', false) ? 'checked' : '' ?>>
+				<label class="adc-toggle">
+					<input type="checkbox" name="email_enabled" value="1" id="aid-email-toggle" <?= $cfg('email_enabled', false) ? 'checked' : '' ?>>
 					<span class="adc-toggle-slider"></span>
 				</label>
 			</div>
 
-			<div id="email-settings" style="<?= $cfg('email_enabled', false) ? '' : 'display:none' ?>">
+			<div id="aid-email-settings" style="<?= $cfg('email_enabled', false) ? '' : 'display:none' ?>">
 				<div class="adc-field-row">
 					<div class="adc-field-group">
-						<label class="adc-label" for="email_to">Destinataire</label>
-						<input type="email" id="email_to" name="email_to"
-							value="<?= htmlspecialchars((string)$cfg('email_to')) ?>"
-							placeholder="vous@exemple.com"
-							class="adc-input">
+						<label class="adc-label">Destinataire</label>
+						<input type="email" name="email_to" value="<?= htmlspecialchars((string)$cfg('email_to')) ?>" placeholder="vous@exemple.com" class="adc-input">
 					</div>
 					<div class="adc-field-group">
-						<label class="adc-label" for="email_from">Expéditeur</label>
-						<input type="email" id="email_from" name="email_from"
-							value="<?= htmlspecialchars((string)$cfg('email_from')) ?>"
-							placeholder="freshrss@exemple.com"
-							class="adc-input">
+						<label class="adc-label">Expéditeur</label>
+						<input type="email" name="email_from" value="<?= htmlspecialchars((string)$cfg('email_from')) ?>" placeholder="freshrss@exemple.com" class="adc-input">
 					</div>
 					<div class="adc-field-group">
-						<label class="adc-label" for="email_from_name">Nom expéditeur</label>
-						<input type="text" id="email_from_name" name="email_from_name"
-							value="<?= htmlspecialchars((string)$cfg('email_from_name', 'FreshRSS AI Digest')) ?>"
-							class="adc-input">
+						<label class="adc-label">Nom expéditeur</label>
+						<input type="text" name="email_from_name" value="<?= htmlspecialchars((string)$cfg('email_from_name', 'FreshRSS AI Digest')) ?>" class="adc-input">
 					</div>
 				</div>
-
 				<div class="adc-field-row">
 					<div class="adc-field-group">
-						<label class="adc-label" for="email_schedule">
-							<?= icon('clock') ?> Envoi automatique
-						</label>
-						<select id="email_schedule" name="email_schedule" class="adc-input adc-select">
+						<label class="adc-label"><?= aidIcon('clock') ?> Envoi automatique</label>
+						<select name="email_schedule" class="adc-input adc-select">
 							<option value="never" <?= $cfg('email_schedule') === 'never' ? 'selected' : '' ?>>Désactivé</option>
 							<option value="daily" <?= $cfg('email_schedule') === 'daily' ? 'selected' : '' ?>>Quotidien</option>
 							<option value="weekly" <?= $cfg('email_schedule') === 'weekly' ? 'selected' : '' ?>>Hebdomadaire (lundi)</option>
 						</select>
 					</div>
 					<div class="adc-field-group" style="max-width:140px">
-						<label class="adc-label" for="email_hour">Heure d'envoi</label>
-						<input type="number" id="email_hour" name="email_hour"
-							min="0" max="23"
-							value="<?= (int)$cfg('email_hour', 8) ?>"
-							class="adc-input">
+						<label class="adc-label">Heure d'envoi</label>
+						<input type="number" name="email_hour" min="0" max="23" value="<?= (int)$cfg('email_hour', 8) ?>" class="adc-input">
 					</div>
 				</div>
-
-				<!-- SMTP -->
 				<div class="adc-subsection">
-					<div class="adc-section-header" style="margin-bottom:12px">
-						<?= icon('server') ?> <h4 style="margin:0;font-size:14px;font-weight:600">Configuration SMTP <span class="adc-badge adc-badge-neutral">Optionnel</span></h4>
+					<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+						<?= aidIcon('server') ?>
+						<strong style="font-size:13px;color:#94a3b8">Configuration SMTP</strong>
+						<span class="adc-badge adc-badge-neutral">Optionnel</span>
 					</div>
 					<p class="adc-hint" style="margin-bottom:12px">Laissez vide pour utiliser la fonction <code>mail()</code> de PHP.</p>
 					<div class="adc-field-row">
 						<div class="adc-field-group">
-							<label class="adc-label" for="smtp_host">Hôte SMTP</label>
-							<input type="text" id="smtp_host" name="smtp_host"
-								value="<?= htmlspecialchars((string)$cfg('smtp_host')) ?>"
-								placeholder="smtp.gmail.com"
-								class="adc-input">
+							<label class="adc-label">Hôte SMTP</label>
+							<input type="text" name="smtp_host" value="<?= htmlspecialchars((string)$cfg('smtp_host')) ?>" placeholder="smtp.gmail.com" class="adc-input">
 						</div>
 						<div class="adc-field-group" style="max-width:100px">
-							<label class="adc-label" for="smtp_port">Port</label>
-							<input type="number" id="smtp_port" name="smtp_port"
-								value="<?= (int)$cfg('smtp_port', 587) ?>"
-								class="adc-input">
+							<label class="adc-label">Port</label>
+							<input type="number" name="smtp_port" value="<?= (int)$cfg('smtp_port', 587) ?>" class="adc-input">
 						</div>
 						<div class="adc-field-group">
-							<label class="adc-label" for="smtp_user">Utilisateur</label>
-							<input type="text" id="smtp_user" name="smtp_user"
-								value="<?= htmlspecialchars((string)$cfg('smtp_user')) ?>"
-								class="adc-input">
+							<label class="adc-label">Utilisateur</label>
+							<input type="text" name="smtp_user" value="<?= htmlspecialchars((string)$cfg('smtp_user')) ?>" class="adc-input">
 						</div>
 						<div class="adc-field-group">
-							<label class="adc-label" for="smtp_pass">Mot de passe</label>
-							<input type="password" id="smtp_pass" name="smtp_pass"
-								value="<?= htmlspecialchars((string)$cfg('smtp_pass')) ?>"
-								class="adc-input"
-								autocomplete="new-password">
+							<label class="adc-label">Mot de passe</label>
+							<input type="password" name="smtp_pass" value="<?= htmlspecialchars((string)$cfg('smtp_pass')) ?>" class="adc-input" autocomplete="new-password">
 						</div>
 					</div>
 					<label class="adc-checkbox-label">
@@ -291,198 +309,210 @@ function icon(string $name, int $size = 16): string {
 						Activer TLS/STARTTLS
 					</label>
 				</div>
-
 				<div class="adc-actions-inline">
-					<button type="button" class="adc-btn adc-btn-secondary" id="test-email-btn">
-						<?= icon('mail') ?> Envoyer un email de test
-					</button>
-					<span id="test-email-status" class="adc-inline-status"></span>
+					<button type="button" class="adc-btn adc-btn-secondary" id="aid-test-email"><?= aidIcon('mail') ?> Email de test</button>
+					<span id="aid-email-status" class="adc-inline-status"></span>
 				</div>
-
 				<div class="adc-cron-info">
-					<?= icon('clock') ?> <strong>Configuration cron</strong>
+					<strong style="display:flex;align-items:center;gap:6px;color:#94a3b8;font-size:13px"><?= aidIcon('clock') ?> Configuration cron</strong>
 					<p>Ajoutez cette ligne à votre crontab (<code>crontab -e</code>) :</p>
 					<pre class="adc-code">0 <?= (int)$cfg('email_hour', 8) ?> * * * www-data php /var/www/FreshRSS/extensions/xExtension-AIDigest/cron.php &gt;&gt; /var/log/freshrss-ai-digest.log 2&gt;&amp;1</pre>
 				</div>
 			</div>
 		</div>
 
-		<!-- ─── Actions ─────────────────────────────────────────────── -->
 		<div class="adc-actions">
-			<button type="submit" class="adc-btn adc-btn-primary">
-				<?= icon('save') ?> Enregistrer la configuration
-			</button>
+			<button type="submit" class="adc-btn adc-btn-primary"><?= aidIcon('save') ?> Enregistrer</button>
 		</div>
-
 	</form>
 </div>
 
-<style>
-.adc-model-row { display:flex; gap:8px; align-items:center }
-.adc-model-row .adc-input { flex:1 }
-.adc-test-result { margin-top:8px; padding:10px 14px; border-radius:6px; font-size:13px; line-height:1.5 }
-.adc-test-result.success { background:#ecfdf5; border:1px solid #10b981; color:#065f46 }
-.adc-test-result.error   { background:#fef2f2; border:1px solid #ef4444; color:#991b1b }
-</style>
-
 <script>
 (function() {
-	var providers = <?= json_encode(array_map(fn($p) => ['url' => $p['url'], 'models' => $p['models'], 'needs_key' => $p['needs_key'], 'needs_url' => $p['needs_url']], $providers), JSON_UNESCAPED_UNICODE) ?>;
-	var defaultPrompt = <?= json_encode($defaultPrompt) ?>;
+	'use strict';
+
+	// Data from PHP
+	var PROVIDERS = <?= json_encode(
+		array_map(fn($p) => ['url' => $p['url'], 'models' => $p['models'], 'needs_key' => $p['needs_key'], 'needs_url' => $p['needs_url']], $providers),
+		JSON_UNESCAPED_UNICODE
+	) ?>;
+	var DEFAULT_PROMPT = <?= json_encode($defaultPrompt) ?>;
+
+	function $(id) { return document.getElementById(id); }
 
 	// ─── Provider selection ─────────────────────────────────────────
 	document.querySelectorAll('input[name="ai_provider"]').forEach(function(radio) {
 		radio.addEventListener('change', function() {
-			var p = providers[this.value];
+			var key = this.value;
+			var p = PROVIDERS[key];
+			if (!p) return;
 
-			// Key field
-			document.getElementById('field-api-key').style.display = p.needs_key ? '' : 'none';
+			// Key field visibility
+			var keyField = $('aid-field-key');
+			if (keyField) keyField.style.display = p.needs_key ? '' : 'none';
 
-			// URL field - always visible, but readonly for known providers
-			var urlInput = document.getElementById('ai_api_base_url');
-			urlInput.readOnly = !p.needs_url;
-			if (p.url) urlInput.value = p.url;
-			else if (p.needs_url) urlInput.value = '';
-
-			// Update model select
-			var select = document.getElementById('ai_model_select');
-			var currentVal = document.getElementById('ai_model').value;
-			select.innerHTML = '';
-			p.models.forEach(function(m) {
-				var opt = document.createElement('option');
-				opt.value = m; opt.textContent = m;
-				if (m === currentVal) opt.selected = true;
-				select.appendChild(opt);
-			});
-			// Custom option
-			var custom = document.createElement('option');
-			custom.value = '__custom__';
-			custom.textContent = '-- Saisir un modèle --';
-			select.appendChild(custom);
-
-			// If model not in list, show input
-			if (p.models.length > 0 && !p.models.includes(currentVal)) {
-				document.getElementById('ai_model').value = p.models[0];
-				select.options[0].selected = true;
+			// URL field
+			var urlInput = $('aid-api-url');
+			if (urlInput) {
+				urlInput.readOnly = !p.needs_url;
+				if (p.url) urlInput.value = p.url;
+				else if (p.needs_url) urlInput.value = '';
 			}
 
-			// Provider card active state
-			document.querySelectorAll('.adc-provider-card').forEach(function(card) {
-				card.classList.remove('selected');
-			});
-			this.closest('.adc-provider-card').classList.add('selected');
+			// Model select
+			var sel = $('aid-model-select');
+			var currentModel = $('aid-model') ? $('aid-model').value : '';
+			if (sel) {
+				sel.innerHTML = '';
+				(p.models || []).forEach(function(m) {
+					var opt = document.createElement('option');
+					opt.value = m; opt.textContent = m;
+					if (m === currentModel) opt.selected = true;
+					sel.appendChild(opt);
+				});
+				var custom = document.createElement('option');
+				custom.value = '__custom__'; custom.textContent = '-- Saisir un modèle --';
+				sel.appendChild(custom);
+
+				// Update hidden model input
+				if (p.models.length > 0) {
+					var found = p.models.indexOf(currentModel) !== -1;
+					if (!found) {
+						$('aid-model').value = p.models[0];
+						sel.options[0].selected = true;
+					}
+				}
+			}
+
+			// Card highlight
+			document.querySelectorAll('.adc-provider-card').forEach(function(c) { c.classList.remove('selected'); });
+			var parentCard = this.closest('.adc-provider-card');
+			if (parentCard) parentCard.classList.add('selected');
 		});
 	});
 
-	// ─── Model select ───────────────────────────────────────────────
-	var modelSelect = document.getElementById('ai_model_select');
-	var modelInput  = document.getElementById('ai_model');
+	// ─── Model select / input toggle ───────────────────────────────
+	var modelSel   = $('aid-model-select');
+	var modelInput = $('aid-model');
 
-	// Keep hidden input in sync
-	modelSelect.addEventListener('change', function() {
-		if (this.value === '__custom__') {
-			this.style.display = 'none';
-			modelInput.style.display = '';
-			modelInput.focus();
-		} else {
-			modelInput.value = this.value;
-		}
-	});
-	modelInput.addEventListener('keydown', function(e) {
-		if (e.key === 'Enter') { e.preventDefault(); this.blur(); }
-	});
-	modelInput.addEventListener('blur', function() {
-		if (this.value) {
-			// Check if value is in select options
-			var found = false;
-			for (var i = 0; i < modelSelect.options.length; i++) {
-				if (modelSelect.options[i].value === this.value) { found = true; break; }
+	if (modelSel && modelInput) {
+		modelSel.addEventListener('change', function() {
+			if (this.value === '__custom__') {
+				this.style.display = 'none';
+				modelInput.style.display = '';
+				modelInput.focus();
+			} else {
+				modelInput.value = this.value;
 			}
-			if (found || modelSelect.options.length <= 1) {
-				modelSelect.style.display = '';
+		});
+		modelInput.addEventListener('blur', function() {
+			if (this.value && modelSel.options.length > 1) {
+				modelSel.style.display = '';
 				this.style.display = 'none';
 			}
+		});
+		// Init sync
+		if (modelSel.value && modelSel.value !== '__custom__') {
+			modelInput.value = modelSel.value;
 		}
-	});
-	// Init
-	if (modelSelect.value !== '__custom__') modelInput.value = modelSelect.value;
+	}
 
-	// ─── Sliders live feedback ──────────────────────────────────────
+	// ─── Range sliders ──────────────────────────────────────────────
 	[
-		['ai_temperature',  'temp-badge',     function(v) { return parseFloat(v).toFixed(1) }],
-		['ai_max_articles', 'articles-badge', function(v) { return v }],
-		['ai_max_chars',    'chars-badge',    function(v) { return v }],
-	].forEach(function(r) {
-		var input = document.getElementById(r[0]);
-		var badge = document.getElementById(r[1]);
-		if (input && badge) input.addEventListener('input', function() { badge.textContent = r[2](this.value) });
+		['aid-temp', 'aid-temp-badge', function(v) { return parseFloat(v).toFixed(1); }],
+		['aid-art',  'aid-art-badge',  function(v) { return v; }],
+		['aid-chr',  'aid-chr-badge',  function(v) { return v; }],
+	].forEach(function(item) {
+		var input = $(item[0]), badge = $(item[1]);
+		if (input && badge) {
+			input.addEventListener('input', function() { badge.textContent = item[2](this.value); });
+		}
 	});
 
 	// ─── Password toggle ────────────────────────────────────────────
-	document.getElementById('toggle-pwd').addEventListener('click', function() {
-		var inp = document.getElementById('ai_api_key');
-		inp.type = inp.type === 'password' ? 'text' : 'password';
-	});
+	var pwdToggle = $('aid-toggle-pwd');
+	var pwdInput  = $('aid-api-key');
+	if (pwdToggle && pwdInput) {
+		pwdToggle.addEventListener('click', function() {
+			pwdInput.type = pwdInput.type === 'password' ? 'text' : 'password';
+		});
+	}
 
 	// ─── Email toggle ────────────────────────────────────────────────
-	document.getElementById('email_enabled').addEventListener('change', function() {
-		document.getElementById('email-settings').style.display = this.checked ? '' : 'none';
-	});
+	var emailToggle   = $('aid-email-toggle');
+	var emailSettings = $('aid-email-settings');
+	if (emailToggle && emailSettings) {
+		emailToggle.addEventListener('change', function() {
+			emailSettings.style.display = this.checked ? '' : 'none';
+		});
+	}
 
 	// ─── Reset prompt ────────────────────────────────────────────────
-	document.getElementById('reset-prompt').addEventListener('click', function() {
-		if (confirm('Réinitialiser le prompt par défaut ?')) {
-			document.getElementById('ai_prompt').value = defaultPrompt;
-		}
-	});
+	var resetBtn = $('aid-reset-prompt');
+	if (resetBtn) {
+		resetBtn.addEventListener('click', function() {
+			if (confirm('Réinitialiser le prompt par défaut ?')) {
+				var ta = $('aid-prompt');
+				if (ta) ta.value = DEFAULT_PROMPT;
+			}
+		});
+	}
 
 	// ─── Test API connection ─────────────────────────────────────────
-	document.getElementById('test-api-btn').addEventListener('click', async function() {
-		var resultBox = document.getElementById('test-api-result');
-		this.disabled = true;
-		resultBox.style.display = '';
-		resultBox.className = 'adc-test-result';
-		resultBox.textContent = 'Test en cours…';
+	var testBtn    = $('aid-test-btn');
+	var testResult = $('aid-test-result');
+	if (testBtn && testResult) {
+		testBtn.addEventListener('click', function() {
+			var btn = this;
+			btn.disabled = true;
+			testResult.style.display = '';
+			testResult.className = 'adc-test-result';
+			testResult.textContent = 'Test en cours…';
 
-		try {
-			var resp = await fetch('?aiDigestAction=testConnection');
-			var data = await resp.json();
-			if (data.success) {
-				resultBox.className = 'adc-test-result success';
-				resultBox.textContent = data.message;
-			} else {
-				resultBox.className = 'adc-test-result error';
-				resultBox.textContent = data.error || 'Erreur inconnue';
-			}
-		} catch(e) {
-			resultBox.className = 'adc-test-result error';
-			resultBox.textContent = 'Erreur réseau : ' + e.message;
-		}
-		this.disabled = false;
-	});
+			fetch('/i/?aiDigestAction=testConnection')
+				.then(function(r) { return r.json(); })
+				.then(function(data) {
+					if (data.success) {
+						testResult.className = 'adc-test-result success';
+						testResult.textContent = data.message || 'Connexion réussie !';
+					} else {
+						testResult.className = 'adc-test-result error';
+						testResult.textContent = data.error || 'Erreur inconnue';
+					}
+					btn.disabled = false;
+				})
+				.catch(function(e) {
+					testResult.className = 'adc-test-result error';
+					testResult.textContent = 'Erreur réseau : ' + e.message;
+					btn.disabled = false;
+				});
+		});
+	}
 
 	// ─── Test email ──────────────────────────────────────────────────
-	document.getElementById('test-email-btn').addEventListener('click', async function() {
-		var status = document.getElementById('test-email-status');
-		this.disabled = true;
-		status.textContent = 'Envoi…';
-		status.className = 'adc-inline-status';
+	var testEmailBtn    = $('aid-test-email');
+	var testEmailStatus = $('aid-email-status');
+	if (testEmailBtn && testEmailStatus) {
+		testEmailBtn.addEventListener('click', function() {
+			var btn = this;
+			btn.disabled = true;
+			testEmailStatus.textContent = 'Envoi…';
+			testEmailStatus.className = 'adc-inline-status';
 
-		try {
-			var resp = await fetch('?aiDigestAction=emailReport&get=a');
-			var data = await resp.json();
-			if (data.success) {
-				status.textContent = data.message || 'Email envoyé !';
-				status.className = 'adc-inline-status success';
-			} else {
-				status.textContent = data.error || 'Erreur';
-				status.className = 'adc-inline-status error';
-			}
-		} catch(e) {
-			status.textContent = 'Erreur réseau';
-			status.className = 'adc-inline-status error';
-		}
-		this.disabled = false;
-	});
+			fetch('/i/?aiDigestAction=emailReport&get=a')
+				.then(function(r) { return r.json(); })
+				.then(function(data) {
+					testEmailStatus.textContent = data.success ? (data.message || 'Envoyé !') : (data.error || 'Erreur');
+					testEmailStatus.className = 'adc-inline-status ' + (data.success ? 'success' : 'error');
+					btn.disabled = false;
+				})
+				.catch(function(e) {
+					testEmailStatus.textContent = 'Erreur réseau';
+					testEmailStatus.className = 'adc-inline-status error';
+					btn.disabled = false;
+				});
+		});
+	}
+
 })();
 </script>
