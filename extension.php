@@ -18,7 +18,7 @@ If any articles mention CVEs, security vulnerabilities, patches or zero-days, ou
 |---|---|---|---|
 | CVE-XXXX-XXXX | 9.8 Critique | Apache | Description courte en français |
 
-Score labels: use the language {{LANGUAGE}} for severity names.
+CVSS thresholds: >= 9.0 = Critical · 7.5–8.9 = High · 5.0–7.4 = Medium · < 5.0 = Low. Use {{LANGUAGE}} for the label names.
 
 If no security articles → skip this section entirely.
 
@@ -523,13 +523,20 @@ Articles:
 
 		foreach ($body as $row) {
 			$cells = $parseRow($row);
-			// Detect severity for row class
-			$scoreText = strtolower($cells[1] ?? '');
-			if (str_contains($scoreText, 'critique'))   $cls = 'vuln-critique';
-			elseif (str_contains($scoreText, 'élevé') || str_contains($scoreText, 'elev')) $cls = 'vuln-high';
-			elseif (str_contains($scoreText, 'moyen'))  $cls = 'vuln-medium';
-			elseif (str_contains($scoreText, 'faible')) $cls = 'vuln-low';
-			else $cls = '';
+			// Detect severity: prefer numeric CVSS score, fall back to text
+			$scoreRaw  = $cells[1] ?? '';
+			$scoreText = strtolower($scoreRaw);
+			$cls = '';
+			if (preg_match('/(\d+(?:\.\d+)?)/', $scoreRaw, $sm)) {
+				$score = (float) $sm[1];
+				if ($score >= 9.0)      $cls = 'vuln-critique';
+				elseif ($score >= 7.5)  $cls = 'vuln-high';
+				elseif ($score >= 5.0)  $cls = 'vuln-medium';
+				else                    $cls = 'vuln-low';
+			} elseif (str_contains($scoreText, 'critique') || str_contains($scoreText, 'critical')) $cls = 'vuln-critique';
+			elseif (str_contains($scoreText, 'élevé') || str_contains($scoreText, 'high'))          $cls = 'vuln-high';
+			elseif (str_contains($scoreText, 'moyen') || str_contains($scoreText, 'medium'))        $cls = 'vuln-medium';
+			elseif (str_contains($scoreText, 'faible') || str_contains($scoreText, 'low'))          $cls = 'vuln-low';
 
 			$html .= '<tr' . ($cls ? ' class="' . $cls . '"' : '') . '>';
 			foreach ($cells as $cell) {
@@ -541,66 +548,94 @@ Articles:
 		return $html;
 	}
 
-	/** Minimal Markdown → HTML converter for email (no external lib). */
+	/** Minimal Markdown → HTML converter for email — line-by-line parser. */
 	private function markdownToEmailHtml(string $md): string {
-		// Split into blocks on double newlines
-		$blocks = preg_split('/\n{2,}/', trim($md));
-		$out = '';
+		$lines = explode("\n", str_replace("\r\n", "\n", $md));
+		$out   = '';
+		$i     = 0;
+		$n     = count($lines);
 
-		foreach ($blocks as $block) {
-			$block = trim($block);
-			if ($block === '') continue;
+		while ($i < $n) {
+			$line = $lines[$i];
+
+			// Empty line
+			if (trim($line) === '') { $i++; continue; }
+
+			// Horizontal rule
+			if (preg_match('/^-{3,}$/', trim($line))) { $out .= '<hr>'; $i++; continue; }
 
 			// Fenced code block
-			if (str_starts_with($block, '```')) {
-				$inner = preg_replace('/^```[^\n]*\n?/', '', $block);
-				$inner = preg_replace('/```$/', '', $inner);
-				$out .= '<pre><code>' . htmlspecialchars(trim($inner), ENT_QUOTES, 'UTF-8') . '</code></pre>';
-				continue;
-			}
-
-			// Markdown table (line contains | and second line is separator)
-			$lines = explode("\n", $block);
-			if (count($lines) >= 2 && str_contains($lines[0], '|') && preg_match('/^\|?[\s\-|:]+\|?$/', $lines[1])) {
-				$out .= $this->markdownTableToHtml($block);
+			if (str_starts_with(ltrim($line), '```')) {
+				$i++;
+				$code = '';
+				while ($i < $n && !str_starts_with(ltrim($lines[$i]), '```')) {
+					$code .= $lines[$i] . "\n";
+					$i++;
+				}
+				$i++;
+				$out .= '<pre><code>' . htmlspecialchars(trim($code), ENT_QUOTES, 'UTF-8') . '</code></pre>';
 				continue;
 			}
 
 			// Heading
-			if (preg_match('/^(#{1,3}) (.+)$/', $block, $m)) {
+			if (preg_match('/^(#{1,3}) (.+)$/', $line, $m)) {
 				$level = strlen($m[1]);
-				$text  = htmlspecialchars($m[2], ENT_QUOTES, 'UTF-8');
-				$out  .= "<h{$level}>{$text}</h{$level}>";
+				$out  .= "<h{$level}>" . $this->inlineMarkdown($m[2]) . "</h{$level}>";
+				$i++;
+				continue;
+			}
+
+			// Table: detect by pipe in current line + separator on next non-empty line
+			if (str_contains($line, '|')) {
+				$tableLines = [];
+				while ($i < $n && trim($lines[$i]) !== '' && (str_contains($lines[$i], '|') || preg_match('/^[\s\-|:]+$/', $lines[$i]))) {
+					$tableLines[] = $lines[$i];
+					$i++;
+				}
+				if (count($tableLines) >= 2) {
+					$out .= $this->markdownTableToHtml(implode("\n", $tableLines));
+				}
 				continue;
 			}
 
 			// Unordered list
-			if (preg_match('/^[-*] /m', $block)) {
-				$items = preg_split('/\n/', $block);
+			if (preg_match('/^[-*] /', $line)) {
 				$out .= '<ul>';
-				foreach ($items as $item) {
-					$item = preg_replace('/^[-*] /', '', trim($item));
-					$out .= '<li>' . $this->inlineMarkdown($item) . '</li>';
+				while ($i < $n && preg_match('/^[-*] (.+)/', $lines[$i], $m)) {
+					$out .= '<li>' . $this->inlineMarkdown($m[1]) . '</li>';
+					$i++;
 				}
 				$out .= '</ul>';
 				continue;
 			}
 
 			// Ordered list
-			if (preg_match('/^\d+\. /m', $block)) {
-				$items = preg_split('/\n/', $block);
+			if (preg_match('/^\d+\. /', $line)) {
 				$out .= '<ol>';
-				foreach ($items as $item) {
-					$item = preg_replace('/^\d+\. /', '', trim($item));
-					$out .= '<li>' . $this->inlineMarkdown($item) . '</li>';
+				while ($i < $n && preg_match('/^\d+\. (.+)/', $lines[$i], $m)) {
+					$out .= '<li>' . $this->inlineMarkdown($m[1]) . '</li>';
+					$i++;
 				}
 				$out .= '</ol>';
 				continue;
 			}
 
-			// Paragraph (multi-line → join with space)
-			$text = implode(' ', $lines);
-			$out .= '<p>' . $this->inlineMarkdown($text) . '</p>';
+			// Paragraph: accumulate lines until a blank line or a block-level element
+			$para = [];
+			while ($i < $n) {
+				$l = $lines[$i];
+				if (trim($l) === '') break;
+				if (preg_match('/^#{1,3} /', $l)) break;
+				if (preg_match('/^[-*] /', $l))   break;
+				if (preg_match('/^\d+\. /', $l))   break;
+				if (str_contains($l, '|'))         break;
+				if (preg_match('/^-{3,}$/', trim($l))) break;
+				$para[] = $l;
+				$i++;
+			}
+			if ($para) {
+				$out .= '<p>' . $this->inlineMarkdown(implode(' ', $para)) . '</p>';
+			}
 		}
 
 		return $out;
@@ -690,7 +725,7 @@ Articles:
 <title>Digest IA — {$date}</title>
 <style>
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f0f4f8; margin: 0; padding: 20px; color: #1a202c; }
-  .container { max-width: 680px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
+  .container { max-width: 860px; margin: 0 auto; background: #ffffff; border-radius: 16px; overflow: hidden; box-shadow: 0 4px 24px rgba(0,0,0,0.08); }
   .header { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 32px 40px; color: white; }
   .header h1 { margin: 0 0 4px; font-size: 22px; font-weight: 700; }
   .header .meta { opacity: .85; font-size: 13px; }

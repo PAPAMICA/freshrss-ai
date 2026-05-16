@@ -313,11 +313,19 @@
 			table.querySelectorAll('tbody tr').forEach(function(row) {
 				var scoreCell = row.cells[1];
 				if (!scoreCell) return;
-				var txt = scoreCell.textContent.toLowerCase();
-				if (txt.includes('critique'))    row.classList.add('aid-vuln-critique');
-				else if (txt.includes('élevé') || txt.includes('elev')) row.classList.add('aid-vuln-high');
-				else if (txt.includes('moyen')) row.classList.add('aid-vuln-medium');
-				else if (txt.includes('faible')) row.classList.add('aid-vuln-low');
+				var raw = scoreCell.textContent;
+				var txt = raw.toLowerCase();
+				var numMatch = raw.match(/(\d+(?:\.\d+)?)/);
+				if (numMatch) {
+					var score = parseFloat(numMatch[1]);
+					if (score >= 9.0)     row.classList.add('aid-vuln-critique');
+					else if (score >= 7.5) row.classList.add('aid-vuln-high');
+					else if (score >= 5.0) row.classList.add('aid-vuln-medium');
+					else                   row.classList.add('aid-vuln-low');
+				} else if (txt.includes('critique') || txt.includes('critical')) row.classList.add('aid-vuln-critique');
+				else if (txt.includes('élevé') || txt.includes('high'))          row.classList.add('aid-vuln-high');
+				else if (txt.includes('moyen') || txt.includes('medium'))        row.classList.add('aid-vuln-medium');
+				else if (txt.includes('faible') || txt.includes('low'))          row.classList.add('aid-vuln-low');
 			});
 		});
 	}
